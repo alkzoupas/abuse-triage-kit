@@ -8,9 +8,11 @@
 - [x] PREREGISTRATION.md committed before any detector / eval entry point (machine-checked)
 - [x] 6a rules + features + template_sim · [x] 6b lr/gb ± sim · [x] 6c LLM reviewer (mock + stub-tested Anthropic)
 - [x] 7 Evaluation: run_eval.py (84-cell grid), metrics + bootstrap + cost (known-answer tests), llm_pass CLI
-- [ ] 8 Report + `make demo`: written, first run pending
-- [ ] 9 BYO adapter + docs/byo-events.md + examples/byo: written, tests green
-- [ ] 10 README: not started
+- [x] 8 Report + `make demo` (eval seeds; 3m33s here); all required sections; disclosure of eval re-run
+- [x] 9 BYO adapter + docs/byo-events.md + examples/byo
+- [x] 10 README (numbers copied from report at commit 4c8dce0)
+- Headline (offline, seed 9001, s=0.5): null passes 0/84; 8/12 winner calls hit; H4 (template_sim) MISS (+0.004);
+  H5 MISS; held-out drops large (ato gb+sim 0.996 -> 0.093). LLM: mock only, no finding.
 
 ## Null-control failures and fixes (stop rule)
 - #1 dev 101 s=0: review_ring cells had 0 test positives. Cause: groups timed by EARLIEST member,
@@ -52,4 +54,4 @@
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
 
 ## Last check
-- Full tree incl. stories 7-9: `make test` 93 passed in 387.94s (0:06:27) (exit 0); lint, typecheck exit 0.
+- `make test`: 94 passed in 400.85s (0:06:40) (exit 0); `make lint`, `make typecheck` exit 0; `make demo` 3m33s, null 0/84.
