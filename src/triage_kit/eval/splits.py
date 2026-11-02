@@ -5,7 +5,13 @@
   template_operator) where the unit is the whole group, timed by the signup time
   of its lowest-account-id member (ids are random, so at s = 0 this time is
   distributed like any single account's; timing by the earliest member would push
-  every group into train). So no account and no group ever straddles train and test.
+  every group into train).
+- Group members whose own signup falls on the other side of the cutoff are
+  excluded from both train and test. So the split is strictly time-ordered per
+  account, and test group members are the same age as benign test accounts (at
+  s = 0, keeping whole independently-aged groups made test members older, which
+  leaked group membership through account age). No account and no group ever
+  straddles train and test.
 - in_family: train and test on all six families.
 - heldout_k: train on four families, test on the two unseen ones (three
   rotations; every family is held out exactly once). Test accounts are the same
@@ -42,6 +48,7 @@ class Split:
     test_ids: frozenset[str]
     train_families: tuple[str, ...]
     test_families: tuple[str, ...]
+    excluded_ids: frozenset[str] = frozenset()
 
 
 def unit_of(label: Mapping[str, Any]) -> str:
@@ -63,26 +70,33 @@ def unit_times(
 
 def _partition(
     accounts: Sequence[Account], labels: Mapping[str, Mapping[str, Any]]
-) -> tuple[set[str], set[str]]:
+) -> tuple[set[str], set[str], set[str]]:
     unit_time = unit_times(accounts, labels)
     cutoff = float(np.quantile(sorted(unit_time.values()), TRAIN_FRACTION))
     train: set[str] = set()
     test: set[str] = set()
+    excluded: set[str] = set()
     for a in accounts:
-        (train if unit_time[unit_of(labels[a.account_id])] <= cutoff else test).add(a.account_id)
-    return train, test
+        unit_side_train = unit_time[unit_of(labels[a.account_id])] <= cutoff
+        own_side_train = a.created_at <= cutoff
+        if unit_side_train != own_side_train:
+            excluded.add(a.account_id)  # group member on the other side of the cutoff
+        else:
+            (train if unit_side_train else test).add(a.account_id)
+    return train, test, excluded
 
 
 def make_splits(
     accounts: Sequence[Account], labels: Mapping[str, Mapping[str, Any]]
 ) -> list[Split]:
-    train, test = _partition(accounts, labels)
+    train, test, excluded = _partition(accounts, labels)
+    ex = frozenset(excluded)
     fams = tuple(FAMILIES)
-    out = [Split("in_family", frozenset(train), frozenset(test), fams, fams)]
+    out = [Split("in_family", frozenset(train), frozenset(test), fams, fams, ex)]
     for k, held in enumerate(HELDOUT_FOLDS, 1):
         seen = tuple(f for f in fams if f not in held)
         tr = frozenset(a for a in train if labels[a]["family"] not in held)
-        out.append(Split(f"heldout_{k}", tr, frozenset(test), seen, held))
+        out.append(Split(f"heldout_{k}", tr, frozenset(test), seen, held, ex))
     for s in out:
         assert_split_ok(s, labels)
     return out

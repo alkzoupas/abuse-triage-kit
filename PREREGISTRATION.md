@@ -171,3 +171,17 @@ No detector, feature or generator setting changed.
    misses in brackets), of 84 cells: plain 0/5 (4/10), 0/7 (0/11), 0/5 (6/7); correction on
    both 0/0 (16/4), 0/0 (10/3), 2/0 (22/3); chosen, correction on ROC-AUC only: 0/0 (4/4),
    0/0 (0/3), 0/0 (6/3). Seeds 101, 102, 103 in that order; 1,000 bootstrap samples.
+
+### 2026-11-02 (later) — group members on the far side of the time cutoff are excluded
+
+Found by the null control on eval seed 9001, in the first `make demo` run (4 of 84 cells
+failed; 3 were coordinated-family cells, e.g. template_operator ROC-AUC 0.37 at s = 0).
+Cause, confirmed on dev seeds 101 and 102 (not on the eval seed): a group goes wholly to one
+side of the cutoff, but at s = 0 its members have independent signup times, so test group
+members were 10–14 days older on average than benign test accounts (all created after the
+cutoff), and account age leaked group membership. Fix: a group member whose own signup is on
+the other side of the cutoff is excluded from both train and test, so the split is strictly
+time-ordered per account and no group straddles it. No generator or detector setting changed.
+Null control after the fix, Bonferroni misses of 84 cells: dev 101: 0, dev 102: 0, dev 103: 1
+(heldout_1 template_operator gb+sim, ROC-AUC interval upper bound 0.498, a 12-group cell where
+the hash-based mock also scores 0.41). Eval seed 9001 was then re-run once; the report says so.

@@ -20,7 +20,11 @@
   vary a class where no member fired (0/21 abuse vs 3% benign is likely under the null). Fix:
   continuity correction (2 pseudo-units per class) for ROC-AUC only. Calibrated on dev
   101-103 at s=0 (numbers in PREREGISTRATION.md AMENDMENTS): 0 Bonferroni misses on all seeds.
-- Neither fix touched the generator or a detector. Both logged as a dated prereg amendment.
+- #3 EVAL 9001 s=0 (first make demo): 4/84 cells failed. Cause (confirmed on dev 101/102): whole
+  groups at s=0 hold independently-aged members, so test group members were 10-14 days older than
+  benign test accounts. Fix: exclude group members on the far side of the cutoff. Eval re-run once.
+- After #3, dev 101: 0, dev 102: 0, dev 103: 1 borderline miss (12-group cell; hash mock also 0.41).
+- No fix touched the generator or a detector. All logged as dated prereg amendments.
 
 ## Decisions
 - Knob s scales every mechanism (Binomial(n,s), Poisson(r*s), prob ~ s, lerp of created_at); at s=0 nothing is added or removed.
@@ -40,6 +44,9 @@
   5,000 neighbours drowns it. Kept as declared. Run a v2 (more hashes / containment) as labelled post-hoc?
 - Q2 PR-AUC intervals are judged against the base rate, but a random ranking's expected AP is slightly
   above the base rate with few positives. Fine under Bonferroni here; worth a note if cells get smaller.
+
+- Q3 Percentile cluster bootstrap undercovers slightly with ~10 groups (dev 103 borderline miss).
+  Adopt a few-cluster correction (e.g. wild cluster bootstrap) as a declared amendment?
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.

@@ -205,6 +205,11 @@ feature); <b>LLM reviewer</b> (here the offline <code>MockLLM</code>, whose scor
 prompt: {MOCK_TAG}). Metrics: PR-AUC with base rate, precision/recall at a review budget of
 k = {prereg["review_budget_k"]}, {prereg["bootstrap_samples"]:,}-sample stratified cluster bootstrap
 95% CIs (resampled by account, by group for coordinated families).</p>
+<p class="banner"><b>Disclosure.</b> The eval seeds were run twice. The first <code>make demo</code>
+failed the null control (4 of 84 cells). The cause, a split artifact that made test group members
+older than benign test accounts at s = 0, was confirmed on dev seeds, fixed in the split (no
+generator or detector change) and logged with dates in PREREGISTRATION.md (AMENDMENTS). This
+report is the second run. Nothing else was changed between the two runs.</p>
 <table><tr><th>family</th><th>mechanism (as written before any detector)</th><th>evidence
 channel</th><th>abuse test accounts</th><th>test groups</th></tr>{"".join(rows)}</table>
 """

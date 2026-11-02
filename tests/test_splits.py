@@ -68,6 +68,9 @@ def test_split_is_by_time(dev_s1: Dataset) -> None:
     tr = max(unit_time[unit_of(labels[a])] for a in s.train_ids)
     te = min(unit_time[unit_of(labels[a])] for a in s.test_ids)
     assert tr < te
+    assert max(accts[a].created_at for a in s.train_ids) < min(
+        accts[a].created_at for a in s.test_ids
+    )
 
 
 def test_every_family_and_coordinated_group_count_reaches_test(dev_s1: Dataset) -> None:
@@ -86,3 +89,23 @@ def test_coordinated_groups_reach_test_even_at_null(dev_s0: Dataset) -> None:
     for fam in COORDINATED:
         groups = {labels[a]["group_id"] for a in s.test_ids if labels[a]["family"] == fam}
         assert len(groups) >= 3, fam
+
+
+def test_strict_time_split_at_account_level_and_age_parity_at_null(dev_s0: Dataset) -> None:
+    """Every train account is created before every test account. Without this, at s = 0
+    whole groups of independently-aged accounts land in test and are older than the
+    benign test accounts, which leaks group membership through account age."""
+    import numpy as np
+
+    accts = {ae.account_id: ae.account for ae in dev_s0.data}
+    labels = {r["account_id"]: r for r in dev_s0.labels}
+    s = _splits(dev_s0)[0]
+    assert max(accts[a].created_at for a in s.train_ids) < min(
+        accts[a].created_at for a in s.test_ids
+    )
+    ben = np.mean([accts[a].created_at for a in s.test_ids if labels[a]["family"] == "benign"])
+    for fam in COORDINATED:
+        grp = np.mean([accts[a].created_at for a in s.test_ids if labels[a]["family"] == fam])
+        assert abs(grp - ben) < 4 * 86400, fam  # within 4 days on average
+    assert s.excluded_ids and not (s.excluded_ids & (s.train_ids | s.test_ids))
+    assert all(labels[a]["group_id"] for a in s.excluded_ids)
