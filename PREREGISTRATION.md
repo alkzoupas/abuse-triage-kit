@@ -146,4 +146,28 @@ llm: untestable offline
 
 ## AMENDMENTS
 
-(none)
+### 2026-11-02 — split timing of groups, and the bootstrap interval for ROC-AUC
+
+Both found by the null-control acceptance test on dev seeds, before any eval-seed run.
+No detector, feature or generator setting changed.
+
+1. **Group timing in the split.** The Splits section says a group is "timed by its first
+   member". At s = 0 group members have independent benign signup times, so the earliest of
+   4–8 members is almost always early and every coordinated group fell into train, leaving
+   test cells with zero positives (dev seed 101). Groups are now timed by the signup time of
+   their **lowest-account-id member** (ids are random, so this is distributed like a single
+   account's signup time). At s > 0 members are created within two days of each other, so
+   this barely moves anything.
+2. **ROC-AUC intervals get a continuity correction.** With the plain stratified cluster
+   bootstrap, the rules' ROC-AUC Bonferroni intervals excluded 0.5 in 5–7 of 84 null cells
+   per dev seed: a rule firing on ~3% of benign accounts and on 0 of ~21 abuse accounts in a
+   cell (a likely draw under the null) can only produce intervals below 0.5, because no
+   resample of 21 zero-score accounts contains a firing. Each class now gets two pseudo-units
+   (one above every real score, one below) inside the bootstrap for ROC-AUC, in the spirit of
+   Agresti–Coull. PR-AUC keeps the plain bootstrap: applying the same correction to PR-AUC
+   pushed its intervals upward (up to 22 of 84 uncorrected and 2 Bonferroni misses on dev seed
+   103), because a pseudo-positive at the top adds about 1/(P+2) to average precision.
+   Null-control results per dev seed, Bonferroni misses PR-AUC/ROC-AUC (uncorrected 95%
+   misses in brackets), of 84 cells: plain 0/5 (4/10), 0/7 (0/11), 0/5 (6/7); correction on
+   both 0/0 (16/4), 0/0 (10/3), 2/0 (22/3); chosen, correction on ROC-AUC only: 0/0 (4/4),
+   0/0 (0/3), 0/0 (6/3). Seeds 101, 102, 103 in that order; 1,000 bootstrap samples.

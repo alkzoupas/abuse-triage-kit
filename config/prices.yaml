@@ -1,0 +1,15 @@
+# LLM PRICES — PLACEHOLDER VALUES, NOT REAL VENDOR PRICES.
+# Replace these with your provider's current price sheet before reading any cost
+# number as real. The kit never hardcodes vendor prices; every cost figure in the
+# report is tokens x the numbers in this file.
+placeholder: true
+currency: USD
+# Model used to price the mock run's token counts in the report.
+report_model: example-llm
+models:
+  mock:
+    input_per_mtok: 0.0
+    output_per_mtok: 0.0
+  example-llm:          # PLACEHOLDER
+    input_per_mtok: 1.0   # PLACEHOLDER
+    output_per_mtok: 5.0  # PLACEHOLDER

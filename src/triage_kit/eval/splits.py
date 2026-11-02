@@ -2,8 +2,10 @@
 
 - Split by time: units created before the cutoff train, later units test.
 - A unit is an account, except in coordinated families (review_ring,
-  template_operator) where the unit is the whole group, timed by its first
-  member. So no account and no group ever straddles train and test.
+  template_operator) where the unit is the whole group, timed by the signup time
+  of its lowest-account-id member (ids are random, so at s = 0 this time is
+  distributed like any single account's; timing by the earliest member would push
+  every group into train). So no account and no group ever straddles train and test.
 - in_family: train and test on all six families.
 - heldout_k: train on four families, test on the two unseen ones (three
   rotations; every family is held out exactly once). Test accounts are the same
@@ -47,13 +49,22 @@ def unit_of(label: Mapping[str, Any]) -> str:
     return str(label["group_id"]) if label.get("group_id") else str(label["account_id"])
 
 
+def unit_times(
+    accounts: Sequence[Account], labels: Mapping[str, Mapping[str, Any]]
+) -> dict[str, int]:
+    """Time of each unit: created_at of its lowest-account-id member."""
+    best: dict[str, tuple[str, int]] = {}
+    for a in accounts:
+        u = unit_of(labels[a.account_id])
+        if u not in best or a.account_id < best[u][0]:
+            best[u] = (a.account_id, a.created_at)
+    return {u: t for u, (_, t) in best.items()}
+
+
 def _partition(
     accounts: Sequence[Account], labels: Mapping[str, Mapping[str, Any]]
 ) -> tuple[set[str], set[str]]:
-    unit_time: dict[str, int] = {}
-    for a in accounts:
-        u = unit_of(labels[a.account_id])
-        unit_time[u] = min(unit_time.get(u, a.created_at), a.created_at)
+    unit_time = unit_times(accounts, labels)
     cutoff = float(np.quantile(sorted(unit_time.values()), TRAIN_FRACTION))
     train: set[str] = set()
     test: set[str] = set()

@@ -7,6 +7,7 @@ from triage_kit.eval.splits import (
     assert_split_ok,
     make_splits,
     unit_of,
+    unit_times,
 )
 from triage_kit.eval.truth import COORDINATED
 from triage_kit.generator import FAMILIES
@@ -63,10 +64,7 @@ def test_split_is_by_time(dev_s1: Dataset) -> None:
     accts = {ae.account_id: ae.account for ae in dev_s1.data}
     labels = {r["account_id"]: r for r in dev_s1.labels}
     s = _splits(dev_s1)[0]
-    unit_time: dict[str, int] = {}
-    for aid, a in accts.items():
-        u = unit_of(labels[aid])
-        unit_time[u] = min(unit_time.get(u, a.created_at), a.created_at)
+    unit_time = unit_times(list(accts.values()), labels)
     tr = max(unit_time[unit_of(labels[a])] for a in s.train_ids)
     te = min(unit_time[unit_of(labels[a])] for a in s.test_ids)
     assert tr < te
@@ -77,6 +75,14 @@ def test_every_family_and_coordinated_group_count_reaches_test(dev_s1: Dataset) 
     s = _splits(dev_s1)[0]
     for fam in FAMILIES:
         assert any(labels[a]["family"] == fam for a in s.test_ids), fam
+    for fam in COORDINATED:
+        groups = {labels[a]["group_id"] for a in s.test_ids if labels[a]["family"] == fam}
+        assert len(groups) >= 3, fam
+
+
+def test_coordinated_groups_reach_test_even_at_null(dev_s0: Dataset) -> None:
+    labels = {r["account_id"]: r for r in dev_s0.labels}
+    s = _splits(dev_s0)[0]
     for fam in COORDINATED:
         groups = {labels[a]["group_id"] for a in s.test_ids if labels[a]["family"] == fam}
         assert len(groups) >= 3, fam
