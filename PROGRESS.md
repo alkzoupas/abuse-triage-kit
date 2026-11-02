@@ -11,8 +11,10 @@
 - [x] 8 Report + `make demo` (eval seeds; 3m33s here); all required sections; disclosure of eval re-run
 - [x] 9 BYO adapter + docs/byo-events.md + examples/byo
 - [x] 10 README (numbers copied from report at commit 4c8dce0)
-- Headline (offline, seed 9001, s=0.5): null passes 0/84; 8/12 winner calls hit; H4 (template_sim) MISS (+0.004);
-  H5 MISS; held-out drops large (ato gb+sim 0.996 -> 0.093). LLM: mock only, no finding.
+- [x] 11 Owner follow-ups (post-hoc, dated amendments): few-cluster CI widening (Q3), tie-aware null
+  PR-AUC + degenerate flag (Q2), template_sim_v2 + lr/gb+sim2 (Q1). Eval seeds run a 3rd time, disclosed.
+- Headline (seed 9001, s=0.5, commit 41e8a38): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
+  H4 MISS (+0.004), H5 MISS; gb+sim2 +0.016 in-family over gb. LLM: mock only, no finding.
 
 ## Null-control failures and fixes (stop rule)
 - #1 dev 101 s=0: review_ring cells had 0 test positives. Cause: groups timed by EARLIEST member,
@@ -41,17 +43,12 @@
 - BYO: feature model is trained on synthetic dev-seed data; output is a ranking, documented as such.
 
 ## Questions for owner
-- Q1 Pre-registered template_sim is weak (dev 101: template mean 0.068 vs benign 0.050). Not a bug:
-  exact Jaccard to crew-mates 0.02-0.09 vs <=0.03 benign pairs, MinHash agrees; 64 hashes + max over
-  5,000 neighbours drowns it. Kept as declared. Run a v2 (more hashes / containment) as labelled post-hoc?
-- Q2 PR-AUC intervals are judged against the base rate, but a random ranking's expected AP is slightly
-  above the base rate with few positives. Fine under Bonferroni here; worth a note if cells get smaller.
-
-- Q3 Percentile cluster bootstrap undercovers slightly with ~10 groups (dev 103 borderline miss).
-  Adopt a few-cluster correction (e.g. wild cluster bootstrap) as a declared amendment?
+- Q1-Q3 answered by owner (v2 feature, better null reference, few-cluster correction); done.
+- Q4 v2 alone separates template accounts well on dev, yet adds only +0.016 over gb at s=0.5 because
+  per-account features already catch most of them. Add an s=0.25 level to show where v2 matters?
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
 
 ## Last check
-- `make test`: 94 passed in 400.85s (0:06:40) (exit 0); `make lint`, `make typecheck` exit 0; `make demo` 3m33s, null 0/84.
+- `make test`: 103 passed in 476.17s (0:07:56) (exit 0); `make lint`, `make typecheck` exit 0; `make demo` 4m30s, null 0/108.
