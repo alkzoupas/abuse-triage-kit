@@ -9,6 +9,7 @@
 - [x] PREREGISTRATION.md committed (before any detector / eval entry point)
 - [x] 6a Detector interface, engineered features, YAML rules (family-tagged), template_sim (MinHash)
 - [x] 6b Feature model: lr, lr+sim, gb, gb+sim (fixed settings from PREREGISTRATION.md)
+- [x] 6c LLM reviewer: prompt renderer, MockLLM (hash of prompt), Anthropic provider (stub-tested), per-call token log, real-client guard
 
 ## Decisions
 - src/ layout, package `triage_kit`; Makefile uses .venv if present so local and CI share targets.
@@ -19,8 +20,11 @@
 - Group counts (structure only, no metrics) were printed once for eval seed 9001; nothing was tuned on it.
 - Listing popularity sampled from a precomputed CDF (perf: generation 11s -> 5s for 5,000 accounts). No detector exists yet, so this is not a post-detector generator change.
 
+- Anthropic provider defaults to model claude-opus-5-5 with server-side refusal fallbacks on (`--no-fallbacks` to disable); a refusal scores a neutral 0.5. Model is a CLI flag.
+- Prompt instructions avoid family names so the leakage guard can forbid them outright.
+
 ## Questions for owner
 - Q1 The pre-registered template_sim is weak on dev seed 101 (template mean 0.068 vs benign 0.050). Not a bug: exact Jaccard to crew-mates is 0.02-0.09 vs <=0.03 for benign pairs and MinHash agrees, but 64 hashes + max over 5,000 neighbours buries it in noise. Kept as declared. Want a v2 (more hashes, or containment over type+target tokens) run as a labelled post-hoc variant?
 
 ## Last check
-- `make test`: 35 passed in 47.39s (exit 0); lint and typecheck exit 0.
+- `make test`: 64 passed in 55.62s (exit 0); lint and typecheck exit 0.
