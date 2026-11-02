@@ -247,3 +247,28 @@ and interval method (including the widening from the previous amendment).
 ```prereg-amendment
 extra_s: [0.25]
 ```
+
+### 2026-11-02 (night, later) — post-hoc, owner-approved generator addition: cross-account-only template mode
+
+At s = 0.25 the similarity feature added nothing, and the generator explains why: template
+accounts replay the script Binomial(3, s) times, so weakening s removes cross-account evidence as
+fast as per-account evidence. The owner approved a generator change after detectors exist (the
+original rules allow it only for health-check failures). Declared before writing the code and
+before any run, on any seed.
+
+- New opt-in `template_mode = "cross_only"` (default `"standard"` is byte-identical to before,
+  checked with a digest of three generated datasets taken before the change). In `cross_only`,
+  for template_operator only: every account replays its crew's script exactly once; its benign
+  sessions are not thinned; delays between script steps get benign-like jitter (log-normal
+  sigma 0.9 instead of 0.25); signup times are benign draws (no batch creation). Step order,
+  view/review targets and text skeletons stay shared within a crew, so the cross-account
+  evidence remains. The other five families use the primary s = 0.5.
+- New run: eval seed 9001, s = 0.5, `cross_only`, with bootstrap CIs. Exploratory, not a
+  pre-registered hypothesis.
+- Expectations (exploratory): on template_operator in-family, (a) `gb` (no similarity) scores
+  clearly lower than in the standard s = 0.5 run (0.770); (b) `gb+sim2` beats `gb` by at least
+  0.10 PR-AUC; (c) `gb+sim2` beats `gb+sim` (v1).
+
+```prereg-amendment
+cross_only_runs: [{seed: 9001, s: 0.5}]
+```
