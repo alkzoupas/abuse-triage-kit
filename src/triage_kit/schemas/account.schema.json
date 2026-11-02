@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "account.schema.json",
+  "title": "Account",
+  "description": "One marketplace account. created_at is integer Unix seconds (UTC).",
+  "type": "object",
+  "required": ["account_id", "created_at", "country", "email_domain"],
+  "additionalProperties": false,
+  "properties": {
+    "account_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "integer", "minimum": 0},
+    "country": {"type": "string", "pattern": "^[A-Z]{2}$"},
+    "email_domain": {"type": "string", "minLength": 1}
+  }
+}
