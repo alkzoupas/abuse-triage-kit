@@ -32,11 +32,11 @@ __all__ = [
 BASE_N = 5000
 DEFAULT_SIZES = {  # accounts (or groups, for coordinated families) per 5,000 accounts
     "ato": 100,
-    "review_ring": 20,
+    "review_ring": 30,
     "promo_abuse": 100,
     "scraping": 60,
     "card_testing": 80,
-    "template_operator": 20,
+    "template_operator": 30,
 }
 
 
