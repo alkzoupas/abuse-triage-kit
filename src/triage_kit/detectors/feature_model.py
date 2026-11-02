@@ -15,9 +15,13 @@ from sklearn.preprocessing import StandardScaler
 
 from triage_kit.detectors.features import FEATURE_NAMES, account_features
 from triage_kit.detectors.similarity import SimilarityIndex
+from triage_kit.detectors.similarity_v2 import SimilarityIndexV2
 from triage_kit.schema import AccountEvents
 
-VARIANTS = ("lr", "lr+sim", "gb", "gb+sim")
+VARIANTS = ("lr", "lr+sim", "gb", "gb+sim")  # pre-registered
+POSTHOC_VARIANTS = ("lr+sim2", "gb+sim2")  # post-hoc, template_sim_v2
+ALL_VARIANTS = VARIANTS + POSTHOC_VARIANTS
+SIM_COLUMN = {"": None, "sim": "template_sim", "sim2": "template_sim_v2"}
 
 
 def _make(kind: str) -> Any:
@@ -33,14 +37,15 @@ def _make(kind: str) -> Any:
 
 class FeatureModel:
     def __init__(self, variant: str) -> None:
-        if variant not in VARIANTS:
-            raise ValueError(f"unknown variant {variant!r}; choose from {VARIANTS}")
+        if variant not in ALL_VARIANTS:
+            raise ValueError(f"unknown variant {variant!r}; choose from {ALL_VARIANTS}")
         self.name = variant
-        self.kind = variant.split("+")[0]
-        self.use_sim = variant.endswith("+sim")
+        self.kind, _, suffix = variant.partition("+")
+        self.sim_col = SIM_COLUMN[suffix]
+        self.use_sim = self.sim_col is not None
         self.columns: list[str] = []
         self.model: Any = None
-        self.index: SimilarityIndex | None = None
+        self.index: SimilarityIndex | SimilarityIndexV2 | None = None
         self._mu = np.zeros(0)
         self._sd = np.ones(0)
 
@@ -53,13 +58,18 @@ class FeatureModel:
     ) -> FeatureModel:
         """Fit on a precomputed feature table. `reference` is the unlabeled population
         used to compute template_sim for accounts scored later via `score`."""
-        self.columns = [n for n in names if self.use_sim or n != "template_sim"]
+        sim_cols = set(SIM_COLUMN.values()) - {None}
+        self.columns = [n for n in names if n not in sim_cols or n == self.sim_col]
         self._cols = [list(names).index(c) for c in self.columns]
         Xs = X[:, self._cols]
         self.model = _make(self.kind).fit(Xs, np.asarray(y))
         self._mu, self._sd = Xs.mean(axis=0), Xs.std(axis=0) + 1e-9
         if self.use_sim and reference is not None:
-            self.index = SimilarityIndex(reference)
+            self.index = (
+                SimilarityIndex(reference)
+                if self.sim_col == "template_sim"
+                else SimilarityIndexV2(reference)
+            )
         return self
 
     def predict_table(self, X: np.ndarray) -> np.ndarray:
@@ -69,11 +79,11 @@ class FeatureModel:
     def _row(self, ae: AccountEvents) -> np.ndarray:
         f = account_features(ae)
         vals = [f[n] for n in FEATURE_NAMES]
-        if "template_sim" in self.columns:
+        if self.sim_col is not None:
             if self.index is None:
                 raise RuntimeError("+sim model needs a reference population to score accounts")
             vals.append(self.index.value(ae))
-        full = list(FEATURE_NAMES) + (["template_sim"] if "template_sim" in self.columns else [])
+        full = list(FEATURE_NAMES) + ([self.sim_col] if self.sim_col else [])
         return np.array([vals[full.index(c)] for c in self.columns], dtype=float)
 
     def score(self, account_events: AccountEvents) -> tuple[float, str]:

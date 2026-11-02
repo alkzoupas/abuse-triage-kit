@@ -208,3 +208,25 @@ Designed and checked on dev seeds 101–103 only, before the eval seeds were run
    PR-AUC): dev 101: 0 / 0, dev 102: 0 / 0, dev 103: 0 / 0 (9, 9 and 6 cells degenerate).
 3. Winner calls keep the pre-registered rule (95% CIs overlap → tie); with wider intervals
    some calls may change, and the report shows both the original and the updated outcome.
+
+### 2026-11-02 (evening) — post-hoc, after seeing eval-seed results: template-similarity v2
+
+Requested by the owner after the pre-registered `template_sim` (v1) missed H4 (+0.004 vs +0.10).
+v1 stays exactly as declared and remains the primary `+sim`; v2 is an **exploratory, post-hoc**
+addition, reported separately and labelled as such. Designed from a dev-seed diagnosis (v1's 64
+MinHash functions and max over thousands of neighbours mostly measure noise; benign shingles dilute
+crew-mates' overlap), knowing the template-operator mechanism. One fixed design, checked once on
+dev seed 101, no tuning grid:
+
+- tokens: 3- and 4-grams of `type|b` (b as in v1) plus `type:target` for view/review/purchase
+- vocabulary: tokens present in at least 2 and at most 1% of the reference population
+- similarity: exact Jaccard of filtered token sets (sparse product; no MinHash noise)
+- value: mean of the 3 largest similarities to other accounts, times n / (n + 5)
+- new feature-model variants `lr+sim2`, `gb+sim2` (same model settings as the others)
+
+Dev seed 101, feature alone, template_operator vs benign, ROC-AUC / PR-AUC (base 0.038):
+s = 0: v1 0.463 / 0.035, v2 0.504 / 0.040; s = 0.5: v1 0.488 / 0.038, v2 0.848 / 0.442;
+s = 1: v1 0.698 / 0.190, v2 0.994 / 0.928.
+Expectation (exploratory, not a pre-registered hypothesis): `gb+sim2` beats `gb` on
+template_operator in-family at s = 0.5; held-out the gain is smaller, because no training family
+teaches the model that high similarity means abuse.

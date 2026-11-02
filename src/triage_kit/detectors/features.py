@@ -13,6 +13,7 @@ from statistics import median
 import numpy as np
 
 from triage_kit.detectors.similarity import SimilarityIndex
+from triage_kit.detectors.similarity_v2 import SimilarityIndexV2
 from triage_kit.schema import AccountEvents
 
 HOUR = 3600
@@ -154,14 +155,16 @@ def feature_matrix(data: Sequence[AccountEvents]) -> np.ndarray:
 def feature_table(
     data: Sequence[AccountEvents], reference: Sequence[AccountEvents] | None = None
 ) -> tuple[list[str], np.ndarray, list[str]]:
-    """(account ids, feature matrix, column names). Adds `template_sim` when a
-    reference population is given."""
+    """(account ids, feature matrix, column names). Adds `template_sim` (pre-registered)
+    and `template_sim_v2` (post-hoc) when a reference population is given."""
     ids = [ae.account_id for ae in data]
     X = feature_matrix(data)
     names = list(FEATURE_NAMES)
     if reference is not None:
         idx = SimilarityIndex(reference)
+        idx2 = SimilarityIndexV2(reference)  # post-hoc v2, see PREREGISTRATION.md AMENDMENTS
         sim = np.array([idx.value(ae) for ae in data])
-        X = np.column_stack([X, sim])
-        names.append("template_sim")
+        sim2 = np.array([idx2.value(ae) for ae in data])
+        X = np.column_stack([X, sim, sim2])
+        names += ["template_sim", "template_sim_v2"]
     return ids, X, names

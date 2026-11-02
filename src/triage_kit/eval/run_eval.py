@@ -18,7 +18,12 @@ from typing import Any
 
 import numpy as np
 
-from triage_kit.detectors.feature_model import VARIANTS, FeatureModel
+from triage_kit.detectors.feature_model import (
+    ALL_VARIANTS,
+    POSTHOC_VARIANTS,
+    VARIANTS,
+    FeatureModel,
+)
 from triage_kit.detectors.features import FEATURE_NAMES, feature_table
 from triage_kit.detectors.llm.mock import MockLLM
 from triage_kit.detectors.llm.reviewer import LLMReviewer
@@ -41,7 +46,7 @@ from triage_kit.eval.truth import load_truth
 from triage_kit.generator import GeneratorConfig, generate, health_check, write_generated
 from triage_kit.schema import AccountEvents, read_dataset
 
-DETECTORS: tuple[str, ...] = ("rules", *VARIANTS, "llm:mock", "oracle")
+DETECTORS: tuple[str, ...] = ("rules", *VARIANTS, *POSTHOC_VARIANTS, "llm:mock", "oracle")
 ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -129,7 +134,7 @@ def evaluate(
         _assert_train_ok(sp, tr_ids, labels)
         tr_idx = np.array([pos[a] for a in tr_ids])
         y_tr = np.array([int(labels[a]["is_abuse"]) for a in tr_ids])
-        for v in VARIANTS:
+        for v in ALL_VARIANTS:
             m = FeatureModel(v).fit_table(X[tr_idx], y_tr, names)
             scores[(sp.name, v)] = dict(
                 zip(test_ids, m.predict_table(X[te_idx]).tolist(), strict=True)

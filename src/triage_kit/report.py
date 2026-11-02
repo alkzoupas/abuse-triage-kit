@@ -207,11 +207,14 @@ feature); <b>LLM reviewer</b> (here the offline <code>MockLLM</code>, whose scor
 prompt: {MOCK_TAG}). Metrics: PR-AUC with base rate, precision/recall at a review budget of
 k = {prereg["review_budget_k"]}, {prereg["bootstrap_samples"]:,}-sample stratified cluster bootstrap
 95% CIs (resampled by account, by group for coordinated families).</p>
-<p class="banner"><b>Disclosure.</b> The eval seeds were run twice. The first <code>make demo</code>
-failed the null control (4 of 84 cells). The cause, a split artifact that made test group members
-older than benign test accounts at s = 0, was confirmed on dev seeds, fixed in the split (no
-generator or detector change) and logged with dates in PREREGISTRATION.md (AMENDMENTS). This
-report is the second run. Nothing else was changed between the two runs.</p>
+<p class="banner"><b>Disclosure.</b> The eval seeds have been run three times. (1) The first
+<code>make demo</code> failed the null control (4 of 84 cells); the cause, a split artifact that made
+test group members older than benign test accounts at s = 0, was confirmed on dev seeds and fixed in
+the split. (2) The second run passed and was published. (3) After reading it, the owner asked for
+better confidence intervals (few-cluster widening, a tie-aware null PR-AUC) and a better similarity
+feature (v2). All three were designed on dev seeds and declared, with dates, in PREREGISTRATION.md
+(AMENDMENTS) before this third run. No generator, detector rule or pre-registered model setting
+changed. Post-hoc items are labelled where they appear.</p>
 <table><tr><th>family</th><th>mechanism (as written before any detector)</th><th>evidence
 channel</th><th>abuse test accounts</th><th>test groups</th></tr>{"".join(rows)}</table>
 """
@@ -339,33 +342,40 @@ reaches the <b>null PR-AUC</b> column means "no detectable signal" for that dete
 
 
 def _template(runs: dict[float, dict[str, Any]]) -> str:
+    dets = ("lr", "lr+sim", "lr+sim2", "gb", "gb+sim", "gb+sim2")
     rows = []
     for s, run in sorted(runs.items()):
         for split in ("in_family", heldout_split_of("template_operator")):
-            vals = {
-                d: cell(run, split, "template_operator", d)
-                for d in ("lr", "lr+sim", "gb", "gb+sim")
-            }
+            vals = {d: cell(run, split, "template_operator", d) for d in dets}
             rows.append(
                 f"<tr><td class=n>{s:g}</td><td>{esc(split)}</td>"
                 + "".join(
                     f"<td class=n>{num(v['ap'], d, v['ap_ci95'])}</td>" for d, v in vals.items()
                 )
-                + f"<td class=n>{vals['gb+sim']['ap'] - vals['gb']['ap']:+.3f}</td></tr>"
+                + f"<td class=n>{vals['gb+sim']['ap'] - vals['gb']['ap']:+.3f}</td>"
+                + f"<td class=n>{vals['gb+sim2']['ap'] - vals['gb']['ap']:+.3f}</td></tr>"
             )
     return f"""
 <h2>Template operator: with and without the similarity feature</h2>
 <p>Template-operator accounts replay a shared script with small perturbations, so one account alone
-looks ordinary; the evidence is that many accounts share near-identical action sequences. The
-<code>template_sim</code> feature (MinHash over 4-grams of event-type and log-gap tokens, max
-similarity to any other account) <b>was designed knowing this mechanism</b> and was declared in
-PREREGISTRATION.md before any evaluation ran.</p>
-<table><tr><th>s</th><th>split</th><th>lr</th><th>lr+sim</th><th>gb</th><th>gb+sim</th>
-<th>gb+sim − gb</th></tr>{"".join(rows)}</table>
-<p class=sub>Known weakness, found on a dev seed before any eval run and kept as declared: crew-mates'
+looks ordinary; the evidence is that many accounts share near-identical action sequences. Both
+similarity features <b>were designed knowing this mechanism</b>.</p>
+<ul>
+<li><code>template_sim</code> (<b>pre-registered</b>, the <code>+sim</code> variants): MinHash over
+4-grams of event-type and log-gap tokens, max similarity to any other account. Declared before any
+evaluation ran.</li>
+<li><code>template_sim_v2</code> (<b>post-hoc, exploratory</b>, the <code>+sim2</code> variants):
+added after v1 missed H4, at the owner's request, from a dev-seed diagnosis. Exact Jaccard over
+type/gap n-grams plus listing co-visitation tokens, keeping only tokens shared by 2 accounts to 1%
+of the population, scored as the mean of the 3 closest accounts. Declared in PREREGISTRATION.md
+(AMENDMENTS) before the eval seeds were re-run, but it was designed after seeing v1 fail, so treat
+its numbers as a lead to confirm on fresh data, not as a tested hypothesis.</li>
+</ul>
+<table><tr><th>s</th><th>split</th>{"".join(f"<th>{esc(d)}</th>" for d in dets)}
+<th>gb+sim − gb</th><th>gb+sim2 − gb (post-hoc)</th></tr>{"".join(rows)}</table>
+<p class=sub>Why v1 failed (found on a dev seed before any eval run, kept as declared): crew-mates'
 exact shingle Jaccard is only about 0.02–0.09 (benign pairs ≤ 0.03), and 64 MinHash functions
-(resolution ≈ 0.016) maximised over thousands of neighbours mostly measure noise. A better-resolved
-variant would be a post-hoc, separately labelled experiment.</p>
+(resolution ≈ 0.016) maximised over thousands of neighbours mostly measure noise.</p>
 """
 
 
@@ -457,6 +467,10 @@ def _expected(
     )
     ho = heldout_split_of(tf)
     g_ho = cell(primary, ho, tf, "gb+sim")["ap"] - cell(primary, ho, tf, "gb")["ap"]
+    g2_in = (
+        cell(primary, "in_family", tf, "gb+sim2")["ap"] - cell(primary, "in_family", tf, "gb")["ap"]
+    )
+    g2_ho = cell(primary, ho, tf, "gb+sim2")["ap"] - cell(primary, ho, tf, "gb")["ap"]
     need = prereg["template_sim_gain_in_family_min"]
     hyp.append((f"H4 +sim gain on {tf} in-family ≥ {need}", g_in >= need, f"gain {g_in:+.3f}"))
     hyp.append(
@@ -479,6 +493,8 @@ intervals: {hits} hit, {misses} miss.</p>
 <th>actual (widened CIs)</th><th></th><th>detail (widened)</th></tr>
 {"".join(rows)}</table>
 <table><tr><th>hypothesis</th><th></th><th>detail</th></tr>{hrows}
+<tr><td>Exploratory (post-hoc, not a pre-registered hypothesis): +sim2 gain on {tf} in-family &gt; 0</td>
+<td class={"hit" if g2_in > 0 else "miss"}>{"yes" if g2_in > 0 else "no"}</td><td class=n>gain {g2_in:+.3f} (held-out {g2_ho:+.3f})</td></tr>
 <tr><td>H6 real LLM strongest on review_ring/ato, weakest on template_operator; costs far more</td>
 <td>untestable offline</td><td>{MOCK_TAG}: the mock cannot test this</td></tr></table>
 """
