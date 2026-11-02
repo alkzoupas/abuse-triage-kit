@@ -7,6 +7,7 @@
 - [x] 4 Oracle per family (src/triage_kit/eval/oracle.py) + AP/ROC-AUC with known-answer tests. Dev seed 101: oracle AP = 1.0 for all 6 families at s=1, ~= base rate at s=0.
 - [x] 5 Splits: time-ordered 60/40 by unit (account, or group for coordinated), in_family + 3 held-out folds, leakage asserted
 - [x] PREREGISTRATION.md committed (before any detector / eval entry point)
+- [x] 6a Detector interface, engineered features, YAML rules (family-tagged), template_sim (MinHash)
 
 ## Decisions
 - src/ layout, package `triage_kit`; Makefile uses .venv if present so local and CI share targets.
@@ -18,7 +19,7 @@
 - Listing popularity sampled from a precomputed CDF (perf: generation 11s -> 5s for 5,000 accounts). No detector exists yet, so this is not a post-detector generator change.
 
 ## Questions for owner
-- (none yet)
+- Q1 The pre-registered template_sim is weak on dev seed 101 (template mean 0.068 vs benign 0.050). Not a bug: exact Jaccard to crew-mates is 0.02-0.09 vs <=0.03 for benign pairs and MinHash agrees, but 64 hashes + max over 5,000 neighbours buries it in noise. Kept as declared. Want a v2 (more hashes, or containment over type+target tokens) run as a labelled post-hoc variant?
 
 ## Last check
 - `make test`: 35 passed in 47.39s (exit 0); lint and typecheck exit 0.
