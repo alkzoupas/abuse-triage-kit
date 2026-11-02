@@ -4,6 +4,7 @@
 - [x] 1 Repo skeleton (pyproject, Makefile, CI, MIT)
 - [x] 2 Event schema: dataclasses + JSON Schema (src/triage_kit/schema.py, schemas/*.json)
 - [x] 3 Generator: benign + 6 families, knob s, truth/ kept separate (src/triage_kit/generator/)
+- [x] 4 Oracle per family (src/triage_kit/eval/oracle.py) + AP/ROC-AUC with known-answer tests. Dev seed 101: oracle AP = 1.0 for all 6 families at s=1, ~= base rate at s=0.
 
 ## Decisions
 - src/ layout, package `triage_kit`; Makefile uses .venv if present so local and CI share targets.
@@ -16,4 +17,4 @@
 - (none yet)
 
 ## Last check
-- `make test`: 17 passed in 42.70s (exit 0); lint and typecheck exit 0.
+- `make test`: 29 passed in 51.63s (exit 0); lint and typecheck exit 0.
