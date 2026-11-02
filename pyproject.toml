@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "abuse-triage-kit"
+version = "0.1.0"
+description = "Compare rules, a feature model and an LLM reviewer on synthetic marketplace abuse with known answers."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+  "numpy>=1.26",
+  "scikit-learn>=1.4",
+  "pyyaml>=6",
+  "jsonschema>=4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10", "types-PyYAML"]
+anthropic = ["anthropic"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+triage_kit = ["*.json", "*.yaml", "**/*.json", "**/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+warn_unused_ignores = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+files = ["src"]
