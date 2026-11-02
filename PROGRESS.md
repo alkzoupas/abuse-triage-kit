@@ -6,6 +6,7 @@
 - [x] 3 Generator: benign + 6 families, knob s, truth/ kept separate (src/triage_kit/generator/)
 - [x] 4 Oracle per family (src/triage_kit/eval/oracle.py) + AP/ROC-AUC with known-answer tests. Dev seed 101: oracle AP = 1.0 for all 6 families at s=1, ~= base rate at s=0.
 - [x] 5 Splits: time-ordered 60/40 by unit (account, or group for coordinated), in_family + 3 held-out folds, leakage asserted
+- [x] PREREGISTRATION.md committed (before any detector / eval entry point)
 
 ## Decisions
 - src/ layout, package `triage_kit`; Makefile uses .venv if present so local and CI share targets.
