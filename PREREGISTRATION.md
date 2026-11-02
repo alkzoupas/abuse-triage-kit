@@ -272,3 +272,39 @@ before any run, on any seed.
 ```prereg-amendment
 cross_only_runs: [{seed: 9001, s: 0.5}]
 ```
+
+### 2026-11-02 (late night) — post-hoc, owner-approved generator addition: ordinary-script template mode
+
+The cross-account-only run did not isolate the cross-account channel: its scripts are made of
+actions ordinary accounts rarely take (dev 101: reviews without a purchase ROC-AUC 0.915, listing
+creation 0.889), so one replay gives an account away and `gb` reached 0.993 with no similarity
+feature. The owner approved a second generator addition (PROGRESS.md Q6). Declared before writing
+the code and before any run, on any seed.
+
+- New opt-in `template_mode = "ordinary"`. Both existing modes stay byte-identical (digest of
+  three standard datasets and one cross_only dataset taken before the change). For
+  template_operator only, as in `cross_only`: one replay per account, no session thinning,
+  benign signup time. In addition, the crew's script is built only from what a benign session
+  does: 2 or 3 sessions, each `login` followed by Geometric(0.25) views, each view preceded by a
+  `search` with probability 0.3 (benign query grammar), view targets drawn from the benign
+  listing-popularity distribution. Each stored step delay is LogNormal(log 40 s, 0.6) and each
+  replay multiplies it by LogNormal(0, 0.67), so the replayed gaps have the benign marginal
+  LogNormal(log 40 s, 0.9). Per replay and per account (not shared): session start times are
+  uniform over the account's life, device and IP are drawn as in a benign session, a non-login
+  step is skipped with probability 0.1, a view keeps the script's target with probability 0.7
+  (else a fresh popularity draw), and a session ends with a payment attempt and purchase of its
+  last view with the benign probabilities. No reviews, listings, profile updates or promo codes.
+  What is shared within a crew: the ordered view targets and search queries, nothing else.
+- Generator acceptance check on dev seed 101 only (no detector is run for it): for template vs
+  benign accounts, the ROC-AUC of each per-account event-type count and of the total event count
+  lies in [0.35, 0.65], and the oracle's PR-AUC is at least 0.9 (the shared evidence exists). If
+  the check fails, the design may be revised once on dev seeds, logged as a further amendment.
+- New run: eval seed 9001, s = 0.5, `ordinary`, with bootstrap CIs. Exploratory, not a
+  pre-registered hypothesis. Other families as in the primary s = 0.5 run.
+- Expectations (exploratory), template_operator in-family: (a) `gb` (no similarity) PR-AUC is at
+  most 0.40; (b) `gb+sim2` beats `gb` by at least 0.10; (c) `gb+sim2` beats `gb+sim` (v1);
+  (d) the oracle's PR-AUC is at least 0.9.
+
+```prereg-amendment
+ordinary_runs: [{seed: 9001, s: 0.5}]
+```
