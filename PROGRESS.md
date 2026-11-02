@@ -13,8 +13,9 @@
 - [x] 10 README (numbers copied from report at commit 4c8dce0)
 - [x] 11 Owner follow-ups (post-hoc, dated amendments): few-cluster CI widening (Q3), tie-aware null
   PR-AUC + degenerate flag (Q2), template_sim_v2 + lr/gb+sim2 (Q1). Eval seeds run a 3rd time, disclosed.
-- Headline (seed 9001, s=0.5, commit 41e8a38): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
-  H4 MISS (+0.004), H5 MISS; gb+sim2 +0.016 in-family over gb. LLM: mock only, no finding.
+- [x] 12 Post-hoc s=0.25 level + signal-strength sweep section (amendment declared before the run).
+- Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
+  H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
 ## Null-control failures and fixes (stop rule)
 - #1 dev 101 s=0: review_ring cells had 0 test positives. Cause: groups timed by EARLIEST member,
@@ -44,11 +45,12 @@
 
 ## Questions for owner
 - Q1-Q3 answered by owner (v2 feature, better null reference, few-cluster correction); done.
-- Q4 v2 alone separates template accounts well on dev, yet adds only +0.016 over gb at s=0.5 because
-  per-account features already catch most of them. Add an s=0.25 level to show where v2 matters?
+- Q4 answered (add s=0.25): done; v2 still adds nothing there (-0.002).
+- Q5 At low s many template accounts never replay the script (Binomial(3, s) runs). A level that
+  weakens per-account evidence while keeping replays would isolate the cross-account channel. Wanted?
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
 
 ## Last check
-- `make test`: 103 passed in 476.17s (0:07:56) (exit 0); `make lint`, `make typecheck` exit 0; `make demo` 4m30s, null 0/108.
+- `make test`: 103 passed in 569.37s (0:09:29) (exit 0); `make lint`, `make typecheck` exit 0; `make demo` 5m59s, null 0/108.
