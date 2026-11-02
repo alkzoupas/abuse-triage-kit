@@ -8,6 +8,7 @@
 - [x] 5 Splits: time-ordered 60/40 by unit (account, or group for coordinated), in_family + 3 held-out folds, leakage asserted
 - [x] PREREGISTRATION.md committed (before any detector / eval entry point)
 - [x] 6a Detector interface, engineered features, YAML rules (family-tagged), template_sim (MinHash)
+- [x] 6b Feature model: lr, lr+sim, gb, gb+sim (fixed settings from PREREGISTRATION.md)
 
 ## Decisions
 - src/ layout, package `triage_kit`; Makefile uses .venv if present so local and CI share targets.
