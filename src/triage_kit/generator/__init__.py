@@ -51,7 +51,7 @@ class GeneratorConfig:
     min_groups: int = 12
     group_size: tuple[int, int] = (4, 8)
     sizes: dict[str, int] = field(default_factory=lambda: dict(DEFAULT_SIZES))
-    # "standard" or "cross_only" (template_operator only; owner-approved post-hoc addition)
+    # "standard", "cross_only" or "ordinary" (template_operator only; owner-approved post-hoc)
     template_mode: str = "standard"
 
 

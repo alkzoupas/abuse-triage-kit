@@ -308,3 +308,23 @@ the code and before any run, on any seed.
 ```prereg-amendment
 ordinary_runs: [{seed: 9001, s: 0.5}]
 ```
+
+### 2026-11-02 (late night, later) — ordinary-script mode: acceptance check, one revision, narrow miss
+
+Dev seed 101 only, generator only (no detector run). Declared before the eval-seed run.
+
+1. **As declared, check failed.** Every count ROC-AUC was in [0.35, 0.65] (largest: login 0.647,
+   total 0.624), but the oracle's PR-AUC was 0.144 (ROC-AUC 0.847). Cause: view targets drawn by
+   listing popularity are listings many benign accounts also view (median 189 viewers per
+   script target), so the shared evidence hardly exists; an order-aware variant of the oracle
+   reached only 0.42.
+2. **The one allowed revision.** Script view targets are drawn uniformly from the catalog, as in
+   the standard mechanism. Nothing else changed.
+3. **Check after the revision, narrow miss on both criteria.** Oracle PR-AUC 0.899 (needs
+   ≥ 0.9); login count ROC-AUC 0.665 (needs ≤ 0.65; the 2–3 extra script sessions add logins);
+   all other counts in [0.48, 0.65]. Also measured, not part of the check: the mean log
+   view-count of an account's viewed listings separates template accounts with ROC-AUC 0.714.
+   No per-account feature uses listing popularity, but a buyer's own features might.
+4. **Decision.** No second revision (that would be tuning to pass a threshold). The eval run
+   goes ahead as declared, and the report flags that the mode missed its acceptance check
+   narrowly. Expectations (a)–(d) are unchanged.

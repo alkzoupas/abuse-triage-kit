@@ -373,7 +373,67 @@ def _fill(rng: np.random.Generator, skeleton: str) -> str:
     return out
 
 
-TEMPLATE_MODES = ("standard", "cross_only")
+TEMPLATE_MODES = ("standard", "cross_only", "ordinary")
+
+
+def _make_ordinary_template(rng: np.random.Generator, world: World) -> dict[str, Any]:
+    """A script shaped like benign sessions: login, searches and popular-listing views only.
+
+    Owner-approved post-hoc addition (PREREGISTRATION.md AMENDMENTS). Stored delays are
+    LogNormal(log 40, 0.6); replay jitter LogNormal(0, 0.67) gives the benign gap marginal
+    LogNormal(log 40, 0.9).
+    """
+
+    def delay() -> int:
+        return max(1, int(rng.lognormal(np.log(40), 0.6)))
+
+    sessions: list[list[dict[str, Any]]] = []
+    for _ in range(int(rng.integers(2, 4))):
+        steps: list[dict[str, Any]] = [{"type": "login", "delay": delay()}]
+        for _ in range(int(rng.geometric(0.25))):
+            if rng.random() < 0.3:
+                steps.append({"type": "search", "delay": delay(), "query": text.benign_search(rng)})
+            tgt = str(world.catalog[int(rng.integers(len(world.catalog)))])  # uniform (rev. 1)
+            steps.append({"type": "view", "delay": delay(), "target": tgt})
+        sessions.append(steps)
+    return {"sessions": sessions, "steps": [st for sess in sessions for st in sess]}
+
+
+def _replay_ordinary(
+    rng: np.random.Generator, world: World, p: Persona, acct: Account, tpl: dict[str, Any]
+) -> list[Event]:
+    """One replay of an ordinary script; timing, device, IP and purchases drawn per account."""
+    out: list[Event] = []
+    starts = np.sort(rng.integers(acct.created_at, world.end_ts - DAY, size=len(tpl["sessions"])))
+    for start, steps in zip(starts, tpl["sessions"], strict=True):
+        dev = p.devices[int(rng.integers(len(p.devices)))]
+        ip = p.home_ip if rng.random() < 0.8 else benign.random_ip(rng)
+        t = int(start)
+        last_view: str | None = None
+        for step in steps:
+            if step["type"] != "login" and rng.random() < 0.1:
+                continue  # skipped step
+            if step["type"] == "login":
+                out.append(_ev(p, t, "login", ip, dev, success=True))
+            elif step["type"] == "search":
+                out.append(_ev(p, t, "search", ip, dev, text=step["query"]))
+            else:
+                tgt = step["target"] if rng.random() < 0.7 else world.draw_listing(rng)
+                out.append(_ev(p, t, "view", ip, dev, target_id=tgt))
+                last_view = tgt
+            t += max(1, int(step["delay"] * rng.lognormal(0, 0.67)))
+        if last_view is not None and rng.random() < 0.12:  # benign purchase probabilities
+            amount = round(float(rng.lognormal(np.log(30), 0.8)), 2)
+            ok = bool(rng.random() < 0.96)
+            out.append(_ev(p, t, "payment_attempt", ip, dev, amount=amount, success=ok))
+            t += max(1, int(rng.lognormal(np.log(40), 0.9)))
+            if not ok:
+                ok = bool(rng.random() < 0.8)
+                out.append(_ev(p, t, "payment_attempt", ip, dev, amount=amount, success=ok))
+                t += max(1, int(rng.lognormal(np.log(40), 0.9)))
+            if ok:
+                out.append(_ev(p, t, "purchase", ip, dev, target_id=last_view, amount=amount))
+    return out
 
 
 def build_template(
@@ -389,16 +449,21 @@ def build_template(
     every account replays its crew's script exactly once, keeps all its benign sessions,
     gets benign-like jitter between steps and a benign signup time. Only the shared step
     order, targets and text skeletons remain, i.e. the cross-account evidence. Ignores s.
+
+    mode="ordinary" (second owner-approved post-hoc addition): as cross_only, but the script
+    is built only from what benign sessions do (login, search, popular-listing views, the
+    occasional purchase), so the only evidence is the shared order of targets and queries.
     """
     if mode not in TEMPLATE_MODES:
         raise ValueError(f"unknown template mode {mode!r}")
-    cross = mode == "cross_only"
+    cross = mode in ("cross_only", "ordinary")
+    ordinary = mode == "ordinary"
     out: list[Built] = []
     meta: dict[str, Any] = {"templates": {}, "groups": {}}
     for gi, ids in enumerate(groups):
         gid = f"grp-tpl-{gi:03d}"
         tid = f"tpl-{gi:03d}"
-        tpl = _make_template(rng, world)
+        tpl = _make_ordinary_template(rng, world) if ordinary else _make_template(rng, world)
         meta["templates"][tid] = tpl
         base_c = int(rng.integers(world.start_ts, world.signup_end_ts - 3 * DAY))
         meta["groups"][gid] = {"template_id": tid}
@@ -411,7 +476,9 @@ def build_template(
             sessions = benign.thin_sessions(rng, sessions, 1.0 if cross else 1.0 - 0.7 * s)
             evs = _flat(sessions)
             dev = p.devices[0]
-            n_runs = 1 if cross else int(rng.binomial(3, s))
+            n_runs = 0 if ordinary else 1 if cross else int(rng.binomial(3, s))
+            if ordinary:
+                evs.extend(_replay_ordinary(rng, world, p, acct, tpl))
             jitter = 0.9 if cross else 0.25
             for _ in range(n_runs):
                 t = int(rng.integers(acct.created_at, world.end_ts - DAY))
