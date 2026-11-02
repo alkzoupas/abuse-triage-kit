@@ -37,5 +37,6 @@ def test_demo_offline_under_ten_minutes(tmp_path: Path) -> None:
     for h in REQUIRED_SECTIONS:
         assert f"<h2>{h.replace(chr(39), '&#x27;')}</h2>" in page or f"<h2>{h}</h2>" in page, h
     assert MOCK_TAG in page
+    assert "<h2>Signal strength sweep</h2>" in page and "s=0.25" in page
     assert "rules encode human" in page and "designed knowing this mechanism" in page
     assert "<script" not in page  # static: no JS

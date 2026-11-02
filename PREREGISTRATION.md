@@ -230,3 +230,20 @@ s = 1: v1 0.698 / 0.190, v2 0.994 / 0.928.
 Expectation (exploratory, not a pre-registered hypothesis): `gb+sim2` beats `gb` on
 template_operator in-family at s = 0.5; held-out the gain is smaller, because no training family
 teaches the model that high similarity means abuse.
+
+### 2026-11-02 (night) — post-hoc: a weaker signal level, s = 0.25
+
+Requested by the owner after the third run showed v2 adding only +0.016 over `gb` at s = 0.5,
+apparently because per-account features already catch most template accounts there. Declared
+before any run at s = 0.25 on any seed. Nothing else changes: same detectors, settings, splits
+and interval method (including the widening from the previous amendment).
+
+- New level: s = 0.25 on the primary eval seed 9001, with bootstrap CIs. The primary analysis
+  stays at s = 0.5; s = 0.25 is a secondary, exploratory level.
+- Expectation (exploratory): on template_operator, in-family, the gain of `gb+sim2` over `gb` is
+  larger at s = 0.25 than at s = 0.5 (+0.016), because the per-account signal weakens faster
+  than the cross-account one. Every detector's PR-AUC is lower at s = 0.25 than at s = 0.5.
+
+```prereg-amendment
+extra_s: [0.25]
+```

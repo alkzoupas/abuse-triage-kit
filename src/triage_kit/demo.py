@@ -41,6 +41,7 @@ def main(out_dir: Path = Path(".")) -> Path:
     seed, s = prereg["primary_seed"], prereg["primary_s"]
     n_boot = prereg["bootstrap_samples"]
     plan = [(seed, 0.0, n_boot), (seed, s, n_boot), (seed, 1.0, n_boot)]
+    plan += [(seed, float(x), n_boot) for x in prereg["extra_s"]]  # post-hoc levels (amendments)
     plan += [(r, s, 0) for r in prereg["replication_seeds"]]
     t0 = time.time()
     for sd, sv, nb in plan:

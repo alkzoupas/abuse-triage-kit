@@ -57,10 +57,15 @@ code{background:var(--panel);padding:0 3px;border-radius:3px}
 
 
 def load_prereg(path: Path) -> dict[str, Any]:
-    m = re.search(r"```prereg\n(.*?)```", path.read_text(), flags=re.DOTALL)
+    """The ```prereg block, updated by any later ```prereg-amendment blocks (in order)."""
+    text = path.read_text()
+    m = re.search(r"```prereg\n(.*?)```", text, flags=re.DOTALL)
     if not m:
         raise ValueError(f"{path}: no ```prereg block")
     out: dict[str, Any] = yaml.safe_load(m.group(1))
+    out.setdefault("extra_s", [])
+    for am in re.finditer(r"```prereg-amendment\n(.*?)```", text, flags=re.DOTALL):
+        out.update(yaml.safe_load(am.group(1)) or {})
     return out
 
 
@@ -379,6 +384,65 @@ exact shingle Jaccard is only about 0.02–0.09 (benign pairs ≤ 0.03), and 64 
 """
 
 
+def _gain(run: dict[str, Any], split: str, det: str = "gb+sim2") -> float:
+    tf = "template_operator"
+    return float(cell(run, split, tf, det)["ap"] - cell(run, split, tf, "gb")["ap"])
+
+
+def _weak_rows(primary: dict[str, Any], extra: dict[float, dict[str, Any]]) -> str:
+    out = []
+    p_s = primary["config"]["s"]
+    dets = ("rules", "lr", "lr+sim", "lr+sim2", "gb", "gb+sim", "gb+sim2")
+    for sv, run in sorted(extra.items()):
+        g_weak, g_p = _gain(run, "in_family"), _gain(primary, "in_family")
+        ok = g_weak > g_p
+        out.append(
+            f"<tr><td>Exploratory (post-hoc): +sim2 gain on template_operator in-family larger at "
+            f"s = {sv:g} than at s = {p_s:g}</td><td class={'hit' if ok else 'miss'}>"
+            f"{'yes' if ok else 'no'}</td><td class=n>{g_weak:+.3f} vs {g_p:+.3f}</td></tr>"
+        )
+        lower = [
+            (f, d)
+            for f in FAMILIES
+            for d in dets
+            if cell(run, "in_family", f, d)["ap"] >= cell(primary, "in_family", f, d)["ap"]
+        ]
+        ok2 = not lower
+        detail = "all lower" if ok2 else "not lower: " + ", ".join(f"{f}/{d}" for f, d in lower)
+        out.append(
+            f"<tr><td>Exploratory (post-hoc): every detector's in-family PR-AUC lower at s = {sv:g} "
+            f"than at s = {p_s:g}</td><td class={'hit' if ok2 else 'miss'}>{'yes' if ok2 else 'no'}"
+            f"</td><td class=n>{esc(detail)}</td></tr>"
+        )
+    return "".join(out)
+
+
+def _sweep(by_s: dict[float, dict[str, Any]], prereg: dict[str, Any], pf: str) -> str:
+    levels = sorted(by_s)
+    dets = ("rules", "gb", "gb+sim", "gb+sim2")
+    head = "".join(f"<th>{esc(d)} @ s={sv:g}</th>" for d in dets for sv in levels)
+    rows = []
+    for fam in FAMILIES:
+        for split in ("in_family", heldout_split_of(fam)):
+            tds = "".join(
+                f"<td class=n>{f3(cell(by_s[sv], split, fam, d)['ap'])}</td>"
+                for d in dets
+                for sv in levels
+            )
+            rows.append(f"<tr><td>{esc(fam)}</td><td>{esc(split)}</td>{tds}</tr>")
+    extra = ", ".join(f"{x:g}" for x in prereg["extra_s"]) or "none"
+    return f"""
+<h2>Signal strength sweep</h2>
+<p>PR-AUC point estimates at each signal strength run on seed {prereg["primary_seed"]}; 95% CIs at
+every level appear in the template-operator table above; for other families they are in each
+level's <code>results/&lt;run&gt;/metrics.json</code>. Pre-registered levels: 0,
+{prereg["primary_s"]} (primary) and 1. Added later as post-hoc, exploratory levels
+(PREREGISTRATION.md, AMENDMENTS): {extra}. A weaker signal shows where each approach starts to
+fail, and where the cross-account similarity features matter most.</p>
+<table><tr><th>family</th><th>split</th>{head}</tr>{"".join(rows)}</table>
+"""
+
+
 def _budget(primary: dict[str, Any], k: int) -> str:
     rows = "".join(
         f"<tr><td>{esc(c['detector'])}</td><td class=n>{num(c['p_at_k'], c['detector'])}</td>"
@@ -425,6 +489,7 @@ def _expected(
     s1: dict[str, Any],
     null: dict[str, Any],
     pf: str,
+    extra: dict[float, dict[str, Any]] | None = None,
 ) -> str:
     rows = []
     hits = hits0 = misses = 0
@@ -495,6 +560,7 @@ intervals: {hits} hit, {misses} miss.</p>
 <table><tr><th>hypothesis</th><th></th><th>detail</th></tr>{hrows}
 <tr><td>Exploratory (post-hoc, not a pre-registered hypothesis): +sim2 gain on {tf} in-family &gt; 0</td>
 <td class={"hit" if g2_in > 0 else "miss"}>{"yes" if g2_in > 0 else "no"}</td><td class=n>gain {g2_in:+.3f} (held-out {g2_ho:+.3f})</td></tr>
+{_weak_rows(primary, extra or {})}
 <tr><td>H6 real LLM strongest on review_ring/ato, weakest on template_operator; costs far more</td>
 <td>untestable offline</td><td>{MOCK_TAG}: the mock cannot test this</td></tr></table>
 """
@@ -579,6 +645,8 @@ def build_report(
     primary = load_run(results_root, seed, s)
     null = load_run(results_root, seed, 0.0)
     s1 = load_run(results_root, seed, 1.0)
+    extra = {float(x): load_run(results_root, seed, float(x)) for x in prereg["extra_s"]}
+    by_s = {**extra, float(s): primary, 1.0: s1}
     reps = [load_run(results_root, r, s) for r in prereg["replication_seeds"]]
     pf = prereg["primary_feature_model"]
     bundles = []
@@ -595,10 +663,11 @@ def build_report(
             _null(null),
             _signal(s1),
             _in_vs_held(primary, s1, prereg),
-            _template({0.5: primary, 1.0: s1}),
+            _template(by_s),
+            _sweep(by_s, prereg, pf),
             _budget(primary, prereg["review_budget_k"]),
             _cost(primary, bundles),
-            _expected(prereg, primary, s1, null, pf),
+            _expected(prereg, primary, s1, null, pf, extra),
             _replication(prereg, reps, primary, pf),
             _bundles(bundles, {}),
             CANT_TELL,
