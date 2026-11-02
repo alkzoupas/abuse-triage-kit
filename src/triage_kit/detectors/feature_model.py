@@ -16,12 +16,18 @@ from sklearn.preprocessing import StandardScaler
 from triage_kit.detectors.features import FEATURE_NAMES, account_features
 from triage_kit.detectors.similarity import SimilarityIndex
 from triage_kit.detectors.similarity_v2 import SimilarityIndexV2
+from triage_kit.detectors.similarity_v3 import SimilarityIndexV3
 from triage_kit.schema import AccountEvents
 
 VARIANTS = ("lr", "lr+sim", "gb", "gb+sim")  # pre-registered
-POSTHOC_VARIANTS = ("lr+sim2", "gb+sim2")  # post-hoc, template_sim_v2
+POSTHOC_VARIANTS = ("lr+sim2", "gb+sim2", "lr+sim3", "gb+sim3")  # post-hoc, v2 and v3
 ALL_VARIANTS = VARIANTS + POSTHOC_VARIANTS
-SIM_COLUMN = {"": None, "sim": "template_sim", "sim2": "template_sim_v2"}
+SIM_COLUMN = {
+    "": None,
+    "sim": "template_sim",
+    "sim2": "template_sim_v2",
+    "sim3": "template_sim_v3",
+}
 
 
 def _make(kind: str) -> Any:
@@ -45,7 +51,7 @@ class FeatureModel:
         self.use_sim = self.sim_col is not None
         self.columns: list[str] = []
         self.model: Any = None
-        self.index: SimilarityIndex | SimilarityIndexV2 | None = None
+        self.index: SimilarityIndex | SimilarityIndexV2 | SimilarityIndexV3 | None = None
         self._mu = np.zeros(0)
         self._sd = np.ones(0)
 
@@ -65,11 +71,12 @@ class FeatureModel:
         self.model = _make(self.kind).fit(Xs, np.asarray(y))
         self._mu, self._sd = Xs.mean(axis=0), Xs.std(axis=0) + 1e-9
         if self.use_sim and reference is not None:
-            self.index = (
-                SimilarityIndex(reference)
-                if self.sim_col == "template_sim"
-                else SimilarityIndexV2(reference)
-            )
+            if self.sim_col == "template_sim":
+                self.index = SimilarityIndex(reference)
+            elif self.sim_col == "template_sim_v2":
+                self.index = SimilarityIndexV2(reference)
+            else:
+                self.index = SimilarityIndexV3(reference)
         return self
 
     def predict_table(self, X: np.ndarray) -> np.ndarray:

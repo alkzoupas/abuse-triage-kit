@@ -37,7 +37,7 @@ def test_model_learns_an_obvious_signal() -> None:
         assert p[y == 1].mean() > p[y == 0].mean() + 0.3
 
 
-def test_posthoc_sim2_variants_use_only_the_v2_column(dev_s1: Dataset) -> None:
+def test_posthoc_variants_use_only_their_own_sim_column(dev_s1: Dataset) -> None:
     from triage_kit.detectors.feature_model import POSTHOC_VARIANTS
 
     data = dev_s1.data[:1200]
@@ -45,7 +45,10 @@ def test_posthoc_sim2_variants_use_only_the_v2_column(dev_s1: Dataset) -> None:
     _, X, names = feature_table(data, reference=data)
     for v in POSTHOC_VARIANTS:
         m = FeatureModel(v).fit_table(X, y, names, reference=data)
-        assert "template_sim_v2" in m.columns and "template_sim" not in m.columns
+        own = "template_sim_v2" if v.endswith("sim2") else "template_sim_v3"
+        sims = [c for c in m.columns if c.startswith("template_sim")]
+        assert sims == [own], (v, sims)
         assert m.score(data[5])[0] == pytest.approx(m.predict_table(X[5:6])[0])
     assert "template_sim_v2" not in FeatureModel("gb+sim").fit_table(X, y, names).columns
     assert "template_sim_v2" not in FeatureModel("gb").fit_table(X, y, names).columns
+    assert "template_sim_v3" not in FeatureModel("gb+sim2").fit_table(X, y, names).columns

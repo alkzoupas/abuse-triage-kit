@@ -219,7 +219,7 @@ feature); <b>LLM reviewer</b> (here the offline <code>MockLLM</code>, whose scor
 prompt: {MOCK_TAG}). Metrics: PR-AUC with base rate, precision/recall at a review budget of
 k = {prereg["review_budget_k"]}, {prereg["bootstrap_samples"]:,}-sample stratified cluster bootstrap
 95% CIs (resampled by account, by group for coordinated families).</p>
-<p class="banner"><b>Disclosure.</b> <code>make demo</code> has been run on the eval seeds six
+<p class="banner"><b>Disclosure.</b> <code>make demo</code> has been run on the eval seeds seven
 times. (1) The first run failed the null control (4 of 84 cells); the cause, a split artifact that
 made test group members older than benign test accounts at s = 0, was confirmed on dev seeds and
 fixed in the split. (2) The second run passed and was published. (3) After reading it, the owner
@@ -227,7 +227,8 @@ asked for better confidence intervals (few-cluster widening, a tie-aware null PR
 similarity feature (v2). (4) Then for a weaker signal level, s = 0.25. (5) Then for an
 owner-approved generator addition, a cross-account-only template mode (the default generator output
 is byte-identical to before). (6) Then for a second one, a template mode whose scripts use only
-ordinary-looking actions (both earlier modes byte-identical). Every change after run 2 was designed on dev seeds and declared, with
+ordinary-looking actions (both earlier modes byte-identical). (7) Then for a third similarity
+feature (v3), which adds cells to every run. Every change after run 2 was designed on dev seeds and declared, with
 dates, in PREREGISTRATION.md (AMENDMENTS) before the run that used it. No detector rule or
 pre-registered model setting changed. Post-hoc items are labelled where they appear.</p>
 <table><tr><th>family</th><th>mechanism (as written before any detector)</th><th>evidence
@@ -577,6 +578,91 @@ here uses. So per-account evidence is weak but not zero.</p>
 """
 
 
+def _null_bad(c: dict[str, Any]) -> bool:
+    bonf = not (c["ap_ci_bonf"][0] <= c["base_rate"] <= c["ap_ci_bonf"][1]) or not (
+        c["roc_ci_bonf"][0] <= 0.5 <= c["roc_ci_bonf"][1]
+    )
+    ref = c.get("ap_random", c["base_rate"])
+    strict = (not c.get("degenerate", False)) and not (
+        c["ap_ci_bonf"][0] <= ref <= c["ap_ci_bonf"][1]
+    )
+    return bool(bonf or strict)
+
+
+def _sim3(
+    results_root: Path,
+    prereg: dict[str, Any],
+    by_s: dict[float, dict[str, Any]],
+    null: dict[str, Any],
+) -> str:
+    """Post-hoc template-similarity v3 (PREREGISTRATION.md AMENDMENTS, 2026-11-03)."""
+    tf = "template_operator"
+    dets = ("gb", "gb+sim", "gb+sim2", "gb+sim3", "lr", "lr+sim3")
+    runs: list[tuple[str, dict[str, Any]]] = [
+        (f"standard s={sv:g}", r) for sv, r in sorted(by_s.items()) if sv > 0
+    ]
+    for key, mode in (("cross_only_runs", "cross_only"), ("ordinary_runs", "ordinary")):
+        for r in prereg[key]:
+            sd, sv = int(r["seed"]), float(r["s"])
+            runs.append((f"{mode} s={sv:g}", load_run(results_root, sd, sv, mode=mode)))
+    rows = []
+    for label, run in runs:
+        for split in ("in_family", heldout_split_of(tf)):
+            c = {d: cell(run, split, tf, d) for d in dets}
+            rows.append(
+                f"<tr><td>{esc(label)}</td><td>{esc(split)}</td>"
+                + "".join(
+                    f"<td class=n>{num(v['ap'], d, v.get('ap_ci95'))}</td>" for d, v in c.items()
+                )
+                + f"<td class=n>{c['gb+sim3']['ap'] - c['gb']['ap']:+.3f}</td></tr>"
+            )
+    checks: list[tuple[str, bool, str]] = []
+    for r in prereg["ordinary_runs"]:
+        od = load_run(results_root, int(r["seed"]), float(r["s"]), mode="ordinary")
+        a = {d: cell(od, "in_family", tf, d)["ap"] for d in dets}
+        checks += [
+            (
+                "(a) ordinary: gb+sim3 beats gb by at least 0.10",
+                a["gb+sim3"] - a["gb"] >= 0.10,
+                f"{a['gb+sim3'] - a['gb']:+.3f}",
+            ),
+            (
+                "(b) ordinary: gb+sim3 beats gb+sim2",
+                a["gb+sim3"] > a["gb+sim2"],
+                f"{a['gb+sim3']:.3f} vs {a['gb+sim2']:.3f}",
+            ),
+        ]
+    v3_null = [c for c in null["cells"] if c["detector"] in ("lr+sim3", "gb+sim3")]
+    bad_all = sum(_null_bad(c) for c in null["cells"])
+    checks.append(
+        (
+            "(c) null control passes with the new cells",
+            bad_all == 0,
+            f"{bad_all} of {null['n_cells']} cells fail ({sum(_null_bad(c) for c in v3_null)} of "
+            f"{len(v3_null)} sim3 cells)",
+        )
+    )
+    std = by_s.get(float(prereg["primary_s"]))
+    if std is not None:
+        d = cell(std, "in_family", tf, "gb+sim3")["ap"] - cell(std, "in_family", tf, "gb")["ap"]
+        checks.append(
+            ("(d) standard s=0.5: gb+sim3 no more than 0.02 below gb", d >= -0.02, f"{d:+.3f}")
+        )
+    return f"""
+<h2>Template-similarity v3 (post-hoc)</h2>
+<p><b>Post-hoc, exploratory, owner-requested</b> (PREREGISTRATION.md, AMENDMENTS, 2026-11-03).
+Designed after v1 and v2 found nothing in the ordinary-script run, from a dev-seed diagnosis:
+Jaccard over a whole account is diluted by its ordinary history, so a short shared script is lost.
+v3 instead <i>counts</i> shared rare evidence: ordered pairs of listings viewed within three views
+of each other, and search queries, keeping only tokens held by 2 accounts to 0.2% of the
+population; the value is log(1 + mean of the 3 largest shared counts). It <b>was designed knowing
+this mechanism</b> and after seeing the result it targets, so treat its numbers as a lead to confirm
+on fresh data, not as a tested hypothesis.</p>
+<table><tr><th>run</th><th>split</th>{"".join(f"<th>{esc(d)}</th>" for d in dets)}<th>gb+sim3 − gb</th></tr>{"".join(rows)}</table>
+<table><tr><th>declared expectation (exploratory)</th><th></th><th>detail</th></tr>{_check_rows(checks)}</table>
+"""
+
+
 def _budget(primary: dict[str, Any], k: int) -> str:
     rows = "".join(
         f"<tr><td>{esc(c['detector'])}</td><td class=n>{num(c['p_at_k'], c['detector'])}</td>"
@@ -801,6 +887,7 @@ def build_report(
             _sweep(by_s, prereg, pf),
             _cross_only(results_root, prereg, by_s),
             _ordinary(results_root, prereg),
+            _sim3(results_root, prereg, by_s, null),
             _budget(primary, prereg["review_budget_k"]),
             _cost(primary, bundles),
             _expected(prereg, primary, s1, null, pf, extra),

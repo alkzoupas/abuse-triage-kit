@@ -38,7 +38,11 @@ def test_detectors_never_import_label_or_metadata_modules() -> None:
 
 def test_feature_columns_carry_no_metadata(dev_s1: Dataset) -> None:
     ids, X, names = feature_table(dev_s1.data[:300], reference=dev_s1.data[:300])
-    assert list(names) == list(FEATURE_NAMES) + ["template_sim", "template_sim_v2"]
+    assert list(names) == list(FEATURE_NAMES) + [
+        "template_sim",
+        "template_sim_v2",
+        "template_sim_v3",
+    ]
     for n in names:
         if n.startswith("template_sim"):  # declared similarity features: events only
             continue

@@ -40,5 +40,6 @@ def test_demo_offline_under_ten_minutes(tmp_path: Path) -> None:
     assert "<h2>Signal strength sweep</h2>" in page and "s=0.25" in page
     assert "<h2>Template operator: cross-account evidence only</h2>" in page
     assert "<h2>Template operator: ordinary-looking scripts</h2>" in page
+    assert "<h2>Template-similarity v3 (post-hoc)</h2>" in page
     assert "rules encode human" in page and "designed knowing this mechanism" in page
     assert "<script" not in page  # static: no JS

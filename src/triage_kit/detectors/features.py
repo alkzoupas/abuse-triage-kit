@@ -14,6 +14,7 @@ import numpy as np
 
 from triage_kit.detectors.similarity import SimilarityIndex
 from triage_kit.detectors.similarity_v2 import SimilarityIndexV2
+from triage_kit.detectors.similarity_v3 import SimilarityIndexV3
 from triage_kit.schema import AccountEvents
 
 HOUR = 3600
@@ -156,7 +157,7 @@ def feature_table(
     data: Sequence[AccountEvents], reference: Sequence[AccountEvents] | None = None
 ) -> tuple[list[str], np.ndarray, list[str]]:
     """(account ids, feature matrix, column names). Adds `template_sim` (pre-registered)
-    and `template_sim_v2` (post-hoc) when a reference population is given."""
+    and `template_sim_v2`, `template_sim_v3` (post-hoc) when a reference population is given."""
     ids = [ae.account_id for ae in data]
     X = feature_matrix(data)
     names = list(FEATURE_NAMES)
@@ -165,6 +166,8 @@ def feature_table(
         idx2 = SimilarityIndexV2(reference)  # post-hoc v2, see PREREGISTRATION.md AMENDMENTS
         sim = np.array([idx.value(ae) for ae in data])
         sim2 = np.array([idx2.value(ae) for ae in data])
-        X = np.column_stack([X, sim, sim2])
-        names += ["template_sim", "template_sim_v2"]
+        idx3 = SimilarityIndexV3(reference)  # post-hoc v3, see PREREGISTRATION.md AMENDMENTS
+        sim3 = np.array([idx3.value(ae) for ae in data])
+        X = np.column_stack([X, sim, sim2, sim3])
+        names += ["template_sim", "template_sim_v2", "template_sim_v3"]
     return ids, X, names

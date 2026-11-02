@@ -359,3 +359,8 @@ Expectations (exploratory), eval seed 9001, template_operator in-family:
 (c) the null control passes with the new cells (no Bonferroni-corrected interval excludes the
 base rate or 0.5; no non-degenerate cell excludes its null PR-AUC);
 (d) standard s = 0.5 run: `gb+sim3` is no more than 0.02 below `gb` (adding it does no harm).
+
+Dev check result (dev seed 101, run once after writing the code, before any eval-seed run; feature
+alone, template vs benign, base 0.038), ROC-AUC / PR-AUC, v2 then v3: standard s = 0: 0.504 /
+0.040, 0.490 / 0.039; standard s = 0.5: 0.848 / 0.442, 0.802 / 0.556; cross_only: 0.511 / 0.040,
+0.732 / 0.253; ordinary: 0.447 / 0.032, 0.883 / 0.635. No setting was changed after it.
