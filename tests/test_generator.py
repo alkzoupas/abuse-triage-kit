@@ -128,3 +128,30 @@ def test_cross_only_template_mode_keeps_replays_and_benign_profile() -> None:
     assert (o > 0).mean() > 0.95
     with pytest.raises(ValueError, match="template mode"):
         generate(GeneratorConfig(seed=1, template_mode="nope", **SMALL))
+
+
+def test_ordinary_template_mode_uses_only_benign_session_actions() -> None:
+    from triage_kit.eval.oracle import oracle_scores
+    from triage_kit.schema import group_events
+
+    std = generate(GeneratorConfig(seed=13, s=0.5, **SMALL))
+    od = generate(GeneratorConfig(seed=13, s=0.5, template_mode="ordinary", **SMALL))
+    assert health_check(od) == []
+    assert od.meta["config"]["template_mode"] == "ordinary"
+    fam = {r["account_id"]: r["family"] for r in std.labels}
+    key = lambda g: [e for e in g.events if fam[e.account_id] != "template_operator"]  # noqa: E731
+    assert key(std) == key(od)  # other families untouched
+    # scripts contain only ordinary session actions
+    for tpl in od.meta["families"]["template_operator"]["templates"].values():
+        assert {st["type"] for st in tpl["steps"]} <= {"login", "search", "view"}
+    # template accounts never take the unusual script actions more than benign accounts do
+    tpl_ids = {a for a, f in fam.items() if f == "template_operator"}
+    odd = {"review", "listing_create", "profile_update", "promo_redeem"}
+    n_odd = sum(1 for e in od.events if e.account_id in tpl_ids and e.type in odd)
+    n_odd_std = sum(1 for e in std.events if e.account_id in tpl_ids and e.type in odd)
+    assert n_odd < n_odd_std
+    # every account replays its crew's script (oracle sees script targets in nearly all)
+    data = group_events(od.accounts, od.events)
+    idx = [i for i, r in enumerate(od.labels) if r["family"] == "template_operator"]
+    o = oracle_scores("template_operator", [data[i] for i in idx], od.meta)
+    assert (o > 0).mean() > 0.9

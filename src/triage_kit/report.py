@@ -65,6 +65,7 @@ def load_prereg(path: Path) -> dict[str, Any]:
     out: dict[str, Any] = yaml.safe_load(m.group(1))
     out.setdefault("extra_s", [])
     out.setdefault("cross_only_runs", [])
+    out.setdefault("ordinary_runs", [])
     for am in re.finditer(r"```prereg-amendment\n(.*?)```", text, flags=re.DOTALL):
         out.update(yaml.safe_load(am.group(1)) or {})
     return out
@@ -218,14 +219,15 @@ feature); <b>LLM reviewer</b> (here the offline <code>MockLLM</code>, whose scor
 prompt: {MOCK_TAG}). Metrics: PR-AUC with base rate, precision/recall at a review budget of
 k = {prereg["review_budget_k"]}, {prereg["bootstrap_samples"]:,}-sample stratified cluster bootstrap
 95% CIs (resampled by account, by group for coordinated families).</p>
-<p class="banner"><b>Disclosure.</b> <code>make demo</code> has been run on the eval seeds five
+<p class="banner"><b>Disclosure.</b> <code>make demo</code> has been run on the eval seeds six
 times. (1) The first run failed the null control (4 of 84 cells); the cause, a split artifact that
 made test group members older than benign test accounts at s = 0, was confirmed on dev seeds and
 fixed in the split. (2) The second run passed and was published. (3) After reading it, the owner
 asked for better confidence intervals (few-cluster widening, a tie-aware null PR-AUC) and a better
 similarity feature (v2). (4) Then for a weaker signal level, s = 0.25. (5) Then for an
 owner-approved generator addition, a cross-account-only template mode (the default generator output
-is byte-identical to before). Every change after run 2 was designed on dev seeds and declared, with
+is byte-identical to before). (6) Then for a second one, a template mode whose scripts use only
+ordinary-looking actions (both earlier modes byte-identical). Every change after run 2 was designed on dev seeds and declared, with
 dates, in PREREGISTRATION.md (AMENDMENTS) before the run that used it. No detector rule or
 pre-registered model setting changed. Post-hoc items are labelled where they appear.</p>
 <table><tr><th>family</th><th>mechanism (as written before any detector)</th><th>evidence
@@ -458,21 +460,13 @@ def _cross_only(
         return ""
     tf = "template_operator"
     dets = ("rules", "lr", "gb", "gb+sim", "gb+sim2", "oracle")
-    rows, checks = [], []
+    rows: list[str] = []
+    checks: list[tuple[str, bool, str]] = []
     for r in prereg["cross_only_runs"]:
         sd, sv = int(r["seed"]), float(r["s"])
         xo = load_run(results_root, sd, sv, mode="cross_only")
         std = by_s.get(sv)
-        for split in ("in_family", heldout_split_of(tf)):
-            c = {d: cell(xo, split, tf, d) for d in dets}
-            rows.append(
-                f"<tr><td>{esc(split)}</td>"
-                + "".join(
-                    f"<td class=n>{num(v['ap'], d, v.get('ap_ci95'))}</td>" for d, v in c.items()
-                )
-                + f"<td class=n>{c['gb+sim2']['ap'] - c['gb']['ap']:+.3f}</td>"
-                + f"<td class=n>{f3(c['gb']['ap_random'])}</td></tr>"
-            )
+        rows += _mode_rows(xo, dets, tf)
         a = {d: cell(xo, "in_family", tf, d)["ap"] for d in dets}
         if std is not None:
             g_std = cell(std, "in_family", tf, "gb")["ap"]
@@ -498,10 +492,7 @@ def _cross_only(
             )
         )
         groups = xo["test_groups"].get(tf)
-    crows = "".join(
-        f"<tr><td>{esc(h)}</td><td class={'hit' if ok else 'miss'}>{'yes' if ok else 'no'}</td><td class=n>{esc(d)}</td></tr>"
-        for h, ok, d in checks
-    )
+    crows = _check_rows(checks)
     return f"""
 <h2>Template operator: cross-account evidence only</h2>
 <p><b>Post-hoc, exploratory, owner-approved generator addition</b> (PREREGISTRATION.md, AMENDMENTS).
@@ -513,6 +504,76 @@ run. {groups} template groups reached the test split.</p>
 <table><tr><th>split</th>{"".join(f"<th>{esc(d)}</th>" for d in dets)}<th>gb+sim2 − gb</th>
 <th>null PR-AUC (gb)</th></tr>{"".join(rows)}</table>
 <table><tr><th>declared expectation (exploratory)</th><th></th><th>detail</th></tr>{crows}</table>
+"""
+
+
+def _check_rows(checks: list[tuple[str, bool, str]]) -> str:
+    return "".join(
+        f"<tr><td>{esc(h)}</td><td class={'hit' if ok else 'miss'}>{'yes' if ok else 'no'}</td><td class=n>{esc(d)}</td></tr>"
+        for h, ok, d in checks
+    )
+
+
+def _mode_rows(run: dict[str, Any], dets: tuple[str, ...], tf: str) -> list[str]:
+    rows = []
+    for split in ("in_family", heldout_split_of(tf)):
+        c = {d: cell(run, split, tf, d) for d in dets}
+        rows.append(
+            f"<tr><td>{esc(split)}</td>"
+            + "".join(f"<td class=n>{num(v['ap'], d, v.get('ap_ci95'))}</td>" for d, v in c.items())
+            + f"<td class=n>{c['gb+sim2']['ap'] - c['gb']['ap']:+.3f}</td>"
+            + f"<td class=n>{f3(c['gb']['ap_random'])}</td></tr>"
+        )
+    return rows
+
+
+def _ordinary(results_root: Path, prereg: dict[str, Any]) -> str:
+    if not prereg["ordinary_runs"]:
+        return ""
+    tf = "template_operator"
+    dets = ("rules", "lr", "gb", "gb+sim", "gb+sim2", "oracle")
+    rows: list[str] = []
+    checks: list[tuple[str, bool, str]] = []
+    groups = None
+    for r in prereg["ordinary_runs"]:
+        sd, sv = int(r["seed"]), float(r["s"])
+        run = load_run(results_root, sd, sv, mode="ordinary")
+        rows += _mode_rows(run, dets, tf)
+        a = {d: cell(run, "in_family", tf, d)["ap"] for d in dets}
+        checks += [
+            ("(a) gb (no similarity) at most 0.40", a["gb"] <= 0.40, f"{a['gb']:.3f}"),
+            (
+                "(b) gb+sim2 beats gb by at least 0.10",
+                a["gb+sim2"] - a["gb"] >= 0.10,
+                f"{a['gb+sim2'] - a['gb']:+.3f}",
+            ),
+            (
+                "(c) gb+sim2 beats gb+sim (v1)",
+                a["gb+sim2"] > a["gb+sim"],
+                f"{a['gb+sim2']:.3f} vs {a['gb+sim']:.3f}",
+            ),
+            ("(d) oracle at least 0.9", a["oracle"] >= 0.9, f"{a['oracle']:.3f}"),
+        ]
+        groups = run["test_groups"].get(tf)
+    return f"""
+<h2>Template operator: ordinary-looking scripts</h2>
+<p><b>Post-hoc, exploratory, second owner-approved generator addition</b> (PREREGISTRATION.md,
+AMENDMENTS). As in the cross-account-only run, each template account replays its crew's script
+once, with ordinary timing and signup. In addition, the script is built only from what ordinary
+sessions do: log in, search, view listings, and now and then buy the last one viewed, with
+ordinary-looking gaps. No reviews, listings, profile updates or promo codes. What a crew shares is
+the order of the listings it views and the queries it types. This is the fairest test here of
+whether a cross-account similarity feature adds anything. The other five families are generated
+as in the s = {prereg["primary_s"]} run. {groups} template groups reached the test split.</p>
+<p class="banner"><b>Acceptance check missed narrowly.</b> Declared before any run, on dev seed 101:
+every per-account event-count ROC-AUC (template vs benign) in [0.35, 0.65] and the oracle at least
+0.9. After the one allowed revision (uniform script targets), the oracle reached 0.899 and the
+login count 0.665, because the extra script sessions add logins. Listing popularity also leaks:
+template accounts view rarer listings (ROC-AUC 0.714 on dev 101), which no per-account feature
+here uses. So per-account evidence is weak but not zero.</p>
+<table><tr><th>split</th>{"".join(f"<th>{esc(d)}</th>" for d in dets)}<th>gb+sim2 − gb</th>
+<th>null PR-AUC (gb)</th></tr>{"".join(rows)}</table>
+<table><tr><th>declared expectation (exploratory)</th><th></th><th>detail</th></tr>{_check_rows(checks)}</table>
 """
 
 
@@ -739,6 +800,7 @@ def build_report(
             _template(by_s),
             _sweep(by_s, prereg, pf),
             _cross_only(results_root, prereg, by_s),
+            _ordinary(results_root, prereg),
             _budget(primary, prereg["review_budget_k"]),
             _cost(primary, bundles),
             _expected(prereg, primary, s1, null, pf, extra),

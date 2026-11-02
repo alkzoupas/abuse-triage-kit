@@ -42,7 +42,8 @@ def main(out_dir: Path = Path(".")) -> Path:
     n_boot = prereg["bootstrap_samples"]
     plan = [(seed, 0.0, n_boot), (seed, s, n_boot), (seed, 1.0, n_boot)]
     plan += [(seed, float(x), n_boot) for x in prereg["extra_s"]]  # post-hoc levels (amendments)
-    xo_plan = [(int(r["seed"]), float(r["s"])) for r in prereg["cross_only_runs"]]
+    xo_plan = [(int(r["seed"]), float(r["s"]), "cross_only") for r in prereg["cross_only_runs"]]
+    xo_plan += [(int(r["seed"]), float(r["s"]), "ordinary") for r in prereg["ordinary_runs"]]
     plan += [(r, s, 0) for r in prereg["replication_seeds"]]
     t0 = time.time()
     for sd, sv, nb in plan:
@@ -56,7 +57,7 @@ def main(out_dir: Path = Path(".")) -> Path:
         )
         run_eval(cfg)
         print(f"[{time.time() - t0:5.0f}s] evaluated {cfg.name}", flush=True)
-    for sd, sv in xo_plan:  # post-hoc cross-account-only template mode (amendment)
+    for sd, sv, mode in xo_plan:  # post-hoc template modes (amendments)
         cfg = RunConfig(
             seed=sd,
             s=sv,
@@ -64,7 +65,7 @@ def main(out_dir: Path = Path(".")) -> Path:
             k=prereg["review_budget_k"],
             data_root=out_dir / "data",
             results_root=out_dir / "results",
-            template_mode="cross_only",
+            template_mode=mode,
         )
         run_eval(cfg)
         print(f"[{time.time() - t0:5.0f}s] evaluated {cfg.name}", flush=True)
