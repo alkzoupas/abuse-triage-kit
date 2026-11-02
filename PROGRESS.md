@@ -14,6 +14,8 @@
 - [x] 11 Owner follow-ups (post-hoc, dated amendments): few-cluster CI widening (Q3), tie-aware null
   PR-AUC + degenerate flag (Q2), template_sim_v2 + lr/gb+sim2 (Q1). Eval seeds run a 3rd time, disclosed.
 - [x] 12 Post-hoc s=0.25 level + signal-strength sweep section (amendment declared before the run).
+- [x] 13 Owner-approved generator addition: template_mode="cross_only" (default output byte-identical,
+  digest checked). Result: gb 0.993 without similarity; expectations (a),(b) MISS, (c) hit.
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
@@ -30,6 +32,7 @@
   benign test accounts. Fix: exclude group members on the far side of the cutoff. Eval re-run once.
 - After #3, dev 101: 0, dev 102: 0, dev 103: 1 borderline miss (12-group cell; hash mock also 0.41).
 - No fix touched the generator or a detector. All logged as dated prereg amendments.
+- Generator changes after detectors existed: only #13 (owner-approved, opt-in, default byte-identical).
 
 ## Decisions
 - Knob s scales every mechanism (Binomial(n,s), Poisson(r*s), prob ~ s, lerp of created_at); at s=0 nothing is added or removed.
@@ -46,11 +49,12 @@
 ## Questions for owner
 - Q1-Q3 answered by owner (v2 feature, better null reference, few-cluster correction); done.
 - Q4 answered (add s=0.25): done; v2 still adds nothing there (-0.002).
-- Q5 At low s many template accounts never replay the script (Binomial(3, s) runs). A level that
-  weakens per-account evidence while keeping replays would isolate the cross-account channel. Wanted?
+- Q5 answered (cross-only mode): done. It did not isolate the cross-account channel: script steps are
+  unusual per account (dev 101: reviews without purchase ROC 0.915, listing creation 0.889).
+- Q6 Fair test of similarity needs scripts drawn from ordinary actions (another generator change). Do it?
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
 
 ## Last check
-- `make test`: 103 passed in 569.37s (0:09:29) (exit 0); `make lint`, `make typecheck` exit 0; `make demo` 5m59s, null 0/108.
+- `make test`: 104 passed in 662.57s (0:11:02) (exit 0); `make lint`, `make typecheck` exit 0; `make demo` 7m09s, null 0/108.
