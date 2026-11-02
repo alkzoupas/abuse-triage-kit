@@ -15,6 +15,7 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 import yaml
+from scipy import stats
 
 ArrayLike = Sequence[float] | npt.NDArray[np.floating] | npt.NDArray[np.integer]
 
@@ -87,6 +88,66 @@ def percentile_interval(samples: ArrayLike, alpha: float) -> tuple[float, float]
         return float("nan"), float("nan")
     lo, hi = np.quantile(a, [alpha / 2, 1 - alpha / 2])
     return float(lo), float(hi)
+
+
+def expected_random_ap(n_pos: int, n: int) -> float:
+    """Exact expected average precision of a uniformly random ranking of n items with
+    n_pos positives: H_n / n + (n_pos - 1) / (n (n - 1)) * (n - H_n).
+
+    With few positives this is noticeably above the base rate n_pos / n, so it is the
+    fairer "no signal" reference for PR-AUC."""
+    if n_pos <= 0 or n <= 0:
+        return float("nan")
+    if n == 1:
+        return 1.0
+    h = float(np.sum(1.0 / np.arange(1, n + 1)))
+    return h / n + (n_pos - 1) / (n * (n - 1)) * (n - h)
+
+
+def null_expected_ap(scores: ArrayLike, n_pos: int) -> float:
+    """Exact expected AP when n_pos labels are assigned at random to these scores,
+    keeping the scores' tie structure (sklearn tie handling: one threshold per tie block).
+
+    For tie block b of size m_b, with c_b items in earlier blocks, p = P/N and
+    q = P(P-1)/(N(N-1)):  E[AP] = (1/P) sum_b [m_b c_b q + m_b p + m_b (m_b - 1) q] / (c_b + m_b).
+    No ties gives expected_random_ap(P, N); all tied gives the base rate P/N."""
+    sa = np.sort(np.asarray(scores, dtype=float))[::-1]
+    n = len(sa)
+    if n_pos <= 0 or n == 0:
+        return float("nan")
+    p = n_pos / n
+    q = n_pos * (n_pos - 1) / (n * (n - 1)) if n > 1 else 0.0
+    _, sizes = np.unique(-sa, return_counts=True)  # block sizes, high score to low
+    m = sizes.astype(float)
+    c = np.r_[0.0, np.cumsum(m)[:-1]]
+    return float(np.sum((m * c * q + m * p + m * (m - 1) * q) / (c + m)) / n_pos)
+
+
+def expansion_factor(n_units: int, alpha: float) -> float:
+    """Few-cluster widening for a percentile interval: sqrt(n/(n-1)) * t(1-a/2, n-1) / z(1-a/2).
+
+    The bootstrap spread of a statistic over n resampled units underestimates its
+    sampling spread by about (n-1)/n, and normal-like tails understate the
+    uncertainty with few units; this follows the motivation of Hesterberg's
+    "expanded percentile interval"."""
+    n = max(int(n_units), 2)
+    t = float(stats.t.ppf(1 - alpha / 2, n - 1))
+    z = float(stats.norm.ppf(1 - alpha / 2))
+    return float(np.sqrt(n / (n - 1)) * t / z)
+
+
+def expanded_interval(
+    est: float, interval: tuple[float, float], n_units: int, alpha: float
+) -> tuple[float, float]:
+    """Widen each side of a percentile interval around the point estimate by
+    expansion_factor(n_units, alpha). Never narrows; clipped to [0, 1]."""
+    lo, hi = interval
+    if np.isnan(lo) or np.isnan(hi) or np.isnan(est):
+        return lo, hi
+    f = expansion_factor(n_units, alpha)
+    new_lo = min(lo, est - f * max(est - lo, 0.0))
+    new_hi = max(hi, est + f * max(hi - est, 0.0))
+    return float(max(0.0, new_lo)), float(min(1.0, new_hi))
 
 
 def bootstrap_metrics(

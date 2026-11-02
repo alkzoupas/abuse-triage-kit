@@ -123,3 +123,17 @@ def test_results_files_are_scores_and_metrics_only(tmp_path: Path) -> None:
     m = json.loads((tmp_path / "res" / r["run"] / "metrics.json").read_text())
     assert m["cost"]["llm_prices_placeholder"] is True
     assert m["cost"]["llm_tokens_in_total"] > 0
+
+
+def test_null_control_also_contains_random_ranking_expected_ap(null_run: dict) -> None:  # type: ignore[type-arg]
+    """Stricter companion to the acceptance test: the corrected PR-AUC interval must also
+    contain the exact null expectation of AP given the scorer's ties (for a continuous
+    scorer with few positives this sits noticeably above the base rate)."""
+    bad = []
+    for c in null_run["cells"]:
+        if c["degenerate"]:  # no positive above the lowest score: AP is exactly the base rate
+            if c["ap"] != pytest.approx(c["base_rate"], abs=1e-6):
+                bad.append(("degenerate but AP != base", c["split"], c["family"], c["detector"]))
+        elif not c["ap_ci_bonf"][0] <= c["ap_random"] <= c["ap_ci_bonf"][1]:
+            bad.append((c["split"], c["family"], c["detector"]))
+    assert not bad, bad

@@ -28,7 +28,9 @@ from triage_kit.eval.metrics import (
     base_rate,
     bootstrap_metrics,
     cost_per_1000,
+    expanded_interval,
     load_prices,
+    null_expected_ap,
     percentile_interval,
     precision_recall_at_k,
     roc_auc,
@@ -239,6 +241,10 @@ def _cell_metrics(
         "n_pos": int(y.sum()),
         "n_pos_units": int(len(set(units[y == 1]))),
         "base_rate": _r(base_rate(y)),
+        "ap_random": _r(null_expected_ap(s, int(y.sum()))),  # null AP given this scorer's ties
+        # degenerate: no positive scored above the lowest score, so AP == base rate and
+        # the bootstrap cannot vary it (zero-width interval); a no-signal cell by construction
+        "degenerate": bool(y.sum() > 0 and s[y == 1].max() <= s.min()),
         "ap": _r(average_precision(y, s)),
         "roc": _r(roc_auc(y, s)),
         "p_at_k": _r(p_k),
@@ -252,9 +258,16 @@ def _cell_metrics(
             "ap": bootstrap_metrics(y, s, units, cfg.n_boot, seed=bseed, continuity=False)["ap"],
             "roc": bootstrap_metrics(y, s, units, cfg.n_boot, seed=bseed, continuity=True)["roc"],
         }
+        # few-cluster correction: widen by the unit count of the scarcer class
+        n_units = min(len(set(units[y == 1])), len(set(units[y == 0])))
+        rec["n_units_scarce"] = n_units
         for key, arr in samples.items():
-            rec[f"{key}_ci95"] = [_r(v) for v in percentile_interval(arr, 0.05)]
-            rec[f"{key}_ci_bonf"] = [_r(v) for v in percentile_interval(arr, alpha_bonf)]
+            for tag, a in (("ci95", 0.05), ("ci_bonf", alpha_bonf)):
+                plain = percentile_interval(arr, a)
+                rec[f"{key}_{tag}_plain"] = [_r(v) for v in plain]  # pre-registered method
+                rec[f"{key}_{tag}"] = [
+                    _r(v) for v in expanded_interval(rec[key], plain, n_units, a)
+                ]
     return rec
 
 

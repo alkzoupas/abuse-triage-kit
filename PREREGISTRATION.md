@@ -185,3 +185,26 @@ time-ordered per account and no group straddles it. No generator or detector set
 Null control after the fix, Bonferroni misses of 84 cells: dev 101: 0, dev 102: 0, dev 103: 1
 (heldout_1 template_operator gb+sim, ROC-AUC interval upper bound 0.498, a 12-group cell where
 the hash-based mock also scores 0.41). Eval seed 9001 was then re-run once; the report says so.
+
+### 2026-11-02 (evening) — post-hoc, after seeing eval-seed results: interval refinements
+
+Requested by the owner after reading the first report. These change how intervals and the
+"no signal" reference are computed, not any detector, feature, split or generator setting.
+Designed and checked on dev seeds 101–103 only, before the eval seeds were run again.
+
+1. **Few-cluster widening.** Each side of every percentile interval (95% and Bonferroni) is
+   widened around the point estimate by `sqrt(n/(n−1)) · t(1−α/2, n−1) / z(1−α/2)`, where n is
+   the number of resampled units in the scarcer class of the cell (groups for coordinated
+   families). Motivated by Hesterberg's expanded percentile interval: with ~10 groups the plain
+   percentile bootstrap is too narrow (one borderline null miss on dev 103). Never narrows.
+2. **Null PR-AUC reference.** Each cell also reports the exact expected PR-AUC under random
+   labels given the detector's tie structure (hypergeometric moments over tie blocks; equals the
+   base rate when everything ties, and exceeds it for a continuous score with few positives).
+   The report uses it as the "no detectable signal" reference. The acceptance test against the
+   base rate is unchanged; a stricter companion test also requires each non-degenerate null
+   cell's corrected interval to contain the null PR-AUC. A cell is **degenerate** when no
+   positive scores above the lowest score (PR-AUC equals the base rate and cannot vary).
+   Null control with both changes, Bonferroni misses of 84 cells (base rate or ROC 0.5 / null
+   PR-AUC): dev 101: 0 / 0, dev 102: 0 / 0, dev 103: 0 / 0 (9, 9 and 6 cells degenerate).
+3. Winner calls keep the pre-registered rule (95% CIs overlap → tie); with wider intervals
+   some calls may change, and the report shows both the original and the updated outcome.

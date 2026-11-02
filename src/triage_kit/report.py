@@ -101,10 +101,12 @@ def ci_overlap(a: Sequence[float], b: Sequence[float]) -> bool:
     return not (a[1] < b[0] or b[1] < a[0])
 
 
-def winner(run: dict[str, Any], split: str, family: str, primary: str) -> tuple[str, bool, str]:
+def winner(
+    run: dict[str, Any], split: str, family: str, primary: str, key: str = "ap_ci95"
+) -> tuple[str, bool, str]:
     r = cell(run, split, family, "rules")
     f = cell(run, split, family, primary)
-    decisive = not ci_overlap(r["ap_ci95"], f["ap_ci95"])
+    decisive = not ci_overlap(r.get(key, r["ap_ci95"]), f.get(key, f["ap_ci95"]))
     if not decisive:
         return "tie", False, f"rules {f3(r['ap'])} vs {primary} {f3(f['ap'])}: 95% CIs overlap"
     w = "rules" if r["ap"] > f["ap"] else "feature_model"
@@ -248,6 +250,15 @@ def _null(null: dict[str, Any]) -> str:
 <p class="sub">For scale: {unc} of {len(cells)} <i>uncorrected</i> 95% PR-AUC intervals exclude the base
 rate, versus about {len(cells) * 0.05:.0f} expected by chance if cells were independent (they are
 not: cells share test accounts). This is why the correction is not optional.</p>
+<p class="sub">Two post-hoc refinements (dated in PREREGISTRATION.md, AMENDMENTS): every interval is
+widened for the number of resampled units in the scarcer class (a t-based expansion that matters
+most for coordinated families with ~10 groups), and each PR-AUC is also compared with its exact
+<b>null PR-AUC</b>, the expected PR-AUC if labels were assigned at random given that detector's
+ties. For a continuous score with few positives the null PR-AUC sits above the base rate.
+{sum(c.get("degenerate", False) for c in cells)} cells are <b>degenerate</b> (no abuse account scored
+above the lowest score, so PR-AUC equals the base rate and cannot vary); they are no-signal cells by
+construction. Non-degenerate cells whose corrected interval excludes the null PR-AUC:
+{sum((not c.get("degenerate", False)) and not (c["ap_ci_bonf"][0] <= c.get("ap_random", c["base_rate"]) <= c["ap_ci_bonf"][1]) for c in cells)}.</p>
 <table><tr><th>detector</th><th>cells</th><th>largest |PR-AUC − base rate|</th><th>ROC-AUC range</th>
 <th>cells failing</th></tr>{"".join(rows)}</table>
 """
@@ -274,9 +285,11 @@ def _family_table(run: dict[str, Any], few: int) -> str:
         rows = []
         for det in DETS_SHOWN:
             a, b = cell(run, "in_family", fam, det), cell(run, ho, fam, det)
+            deg = lambda c: " (degenerate)" if c.get("degenerate") else ""  # noqa: E731
             rows.append(
-                f"<tr><td>{esc(det)}</td><td class=n>{num(a['ap'], det, a['ap_ci95'])}</td>"
-                f"<td class=n>{num(b['ap'], det, b['ap_ci95'])}</td>"
+                f"<tr><td>{esc(det)}</td><td class=n>{num(a['ap'], det, a['ap_ci95'])}{deg(a)}</td>"
+                f"<td class=n>{num(a.get('ap_random'), det)}</td>"
+                f"<td class=n>{num(b['ap'], det, b['ap_ci95'])}{deg(b)}</td>"
                 f"<td class=n>{num(a['p_at_k'], det)} / {num(a['r_at_k'], det)}</td></tr>"
             )
         groups = run["test_groups"].get(fam)
@@ -290,7 +303,7 @@ def _family_table(run: dict[str, Any], few: int) -> str:
         base = cell(run, "in_family", fam, "rules")["base_rate"]
         out.append(
             f"<h3>{esc(fam)}</h3>{flag}{LEGEND}{dot_whisker(run, fam)}"
-            f"<table><tr><th>detector</th><th>PR-AUC in-family [95% CI]</th><th>PR-AUC held-out "
+            f"<table><tr><th>detector</th><th>PR-AUC in-family [95% CI]</th><th>null PR-AUC (no signal)</th><th>PR-AUC held-out "
             f"({esc(ho)}) [95% CI]</th><th>in-family precision / recall @k</th></tr>{''.join(rows)}"
             f"</table><p class=sub>base rate {base:.3f}</p>"
         )
@@ -303,7 +316,8 @@ def _in_vs_held(primary: dict[str, Any], secondary: dict[str, Any], prereg: dict
 <h2>In-family vs held-out</h2>
 <p>Primary analysis, <code>s = {primary["config"]["s"]}</code>, seed {primary["config"]["seed"]}.
 In-family: the family was in training. Held-out: it was not, and the rules written for it are
-switched off. Hover a mark for its numbers; each chart has a table view below it.</p>
+switched off. Hover a mark for its numbers; each chart has a table view below it. A whisker that
+reaches the <b>null PR-AUC</b> column means "no detectable signal" for that detector.</p>
 {_family_table(primary, few)}
 <h3>Secondary: full signal strength (s = {secondary["config"]["s"]})</h3>
 <table><tr><th>family</th>{"".join(f"<th>{esc(d)} in / held</th>" for d in DETS_SHOWN)}</tr>
@@ -403,18 +417,23 @@ def _expected(
     pf: str,
 ) -> str:
     rows = []
-    hits = misses = 0
+    hits = hits0 = misses = 0
     for kind in ("in_family", "heldout"):
         for fam in FAMILIES:
             split = "in_family" if kind == "in_family" else heldout_split_of(fam)
             exp = prereg["expected_winner"][kind][fam]
+            act0, dec0, _ = winner(primary, split, fam, pf, "ap_ci95_plain")
             act, decisive, why = winner(primary, split, fam, pf)
+            ok0 = act0 == exp
             ok = act == exp
+            hits0 += ok0
             hits += ok
             misses += not ok
             rows.append(
-                f"<tr><td>{esc(fam)}</td><td>{esc(kind)}</td><td>{esc(exp)}</td><td>{esc(act)}"
-                f"{' (decisive)' if decisive else ''}</td><td class={'hit' if ok else 'miss'}>"
+                f"<tr><td>{esc(fam)}</td><td>{esc(kind)}</td><td>{esc(exp)}</td>"
+                f"<td>{esc(act0)}{' (decisive)' if dec0 else ''} "
+                f"<span class={'hit' if ok0 else 'miss'}>{'hit' if ok0 else 'MISS'}</span></td>"
+                f"<td>{esc(act)}{' (decisive)' if decisive else ''}</td><td class={'hit' if ok else 'miss'}>"
                 f"{'hit' if ok else 'MISS'}</td><td class=sub>{esc(why)}</td></tr>"
             )
     hyp = []
@@ -453,8 +472,11 @@ def _expected(
 <p>Expectations were committed in PREREGISTRATION.md before any detector existed. Winner = higher
 PR-AUC between rules and the primary feature model (<code>{esc(pf)}</code>); called decisive only if
 the 95% CIs do not overlap, otherwise "tie". Misses are listed, not explained away.
-Winner calls: {hits} hit, {misses} miss.</p>
-<table><tr><th>family</th><th>split</th><th>expected</th><th>actual</th><th></th><th>detail</th></tr>
+The pre-registered interval method is shown first; the widened intervals (a post-hoc amendment)
+second. Winner calls with pre-registered intervals: {hits0} hit, {len(rows) - hits0} miss; with widened
+intervals: {hits} hit, {misses} miss.</p>
+<table><tr><th>family</th><th>split</th><th>expected</th><th>actual (pre-registered CIs)</th>
+<th>actual (widened CIs)</th><th></th><th>detail (widened)</th></tr>
 {"".join(rows)}</table>
 <table><tr><th>hypothesis</th><th></th><th>detail</th></tr>{hrows}
 <tr><td>H6 real LLM strongest on review_ring/ato, weakest on template_operator; costs far more</td>
