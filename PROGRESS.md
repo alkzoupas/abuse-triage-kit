@@ -16,6 +16,10 @@
 - [x] 12 Post-hoc s=0.25 level + signal-strength sweep section (amendment declared before the run).
 - [x] 13 Owner-approved generator addition: template_mode="cross_only" (default output byte-identical,
   digest checked). Result: gb 0.993 without similarity; expectations (a),(b) MISS, (c) hit.
+- [x] 14 Owner-approved generator addition: template_mode="ordinary" (scripts of login/search/view
+  only; earlier modes byte-identical, digest checked). Dev acceptance check failed as declared
+  (oracle 0.144), one revision (uniform targets), narrow miss (oracle 0.899, login ROC 0.665), logged.
+  Result: gb 0.010 (a hit), gb+sim2 +0.001 (b MISS), v2 vs v1 (c MISS), oracle 0.570 (d MISS).
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
@@ -32,7 +36,7 @@
   benign test accounts. Fix: exclude group members on the far side of the cutoff. Eval re-run once.
 - After #3, dev 101: 0, dev 102: 0, dev 103: 1 borderline miss (12-group cell; hash mock also 0.41).
 - No fix touched the generator or a detector. All logged as dated prereg amendments.
-- Generator changes after detectors existed: only #13 (owner-approved, opt-in, default byte-identical).
+- Generator changes after detectors existed: only #13 and #14 (owner-approved, opt-in, earlier modes byte-identical).
 
 ## Decisions
 - Knob s scales every mechanism (Binomial(n,s), Poisson(r*s), prob ~ s, lerp of created_at); at s=0 nothing is added or removed.
@@ -51,7 +55,11 @@
 - Q4 answered (add s=0.25): done; v2 still adds nothing there (-0.002).
 - Q5 answered (cross-only mode): done. It did not isolate the cross-account channel: script steps are
   unusual per account (dev 101: reviews without purchase ROC 0.915, listing creation 0.889).
-- Q6 Fair test of similarity needs scripts drawn from ordinary actions (another generator change). Do it?
+- Q6 answered (ordinary-action scripts): done. Per-account signal gone, but v1 and v2 find nothing either.
+  Diagnosis (dev 101, post-run): sim2 alone ROC 0.447; best crew-mate Jaccard 0.032 < best benign 0.042,
+  because one ~10-event replay is diluted by ~100 benign tokens.
+- Q7 Try a post-hoc similarity v3 built for short shared subsequences (e.g. containment of rare ordered
+  view-target pairs) on the ordinary mode? It would be a seventh eval-seed run.
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
