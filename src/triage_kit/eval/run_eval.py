@@ -60,10 +60,12 @@ class RunConfig:
     data_root: Path = field(default=Path("data"))
     results_root: Path = field(default=Path("results"))
     prices: Path = field(default=ROOT / "config" / "prices.yaml")
+    template_mode: str = "standard"
 
     @property
     def name(self) -> str:
-        return f"seed{self.seed}_s{self.s:.2f}_n{self.n_accounts}"
+        suffix = "" if self.template_mode == "standard" else f"_{self.template_mode}"
+        return f"seed{self.seed}_s{self.s:.2f}_n{self.n_accounts}{suffix}"
 
 
 def _r(x: float) -> float | None:
@@ -92,7 +94,11 @@ def score_mock_llm(
 
 def run_eval(cfg: RunConfig, write: bool = True) -> dict[str, Any]:
     data_dir = cfg.data_root / cfg.name
-    g = generate(GeneratorConfig(seed=cfg.seed, s=cfg.s, n_accounts=cfg.n_accounts))
+    g = generate(
+        GeneratorConfig(
+            seed=cfg.seed, s=cfg.s, n_accounts=cfg.n_accounts, template_mode=cfg.template_mode
+        )
+    )
     problems = health_check(g)
     if problems:
         raise RuntimeError("generator health check failed: " + "; ".join(problems))

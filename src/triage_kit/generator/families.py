@@ -373,9 +373,26 @@ def _fill(rng: np.random.Generator, skeleton: str) -> str:
     return out
 
 
+TEMPLATE_MODES = ("standard", "cross_only")
+
+
 def build_template(
-    rng: np.random.Generator, world: World, s: float, groups: list[list[str]]
+    rng: np.random.Generator,
+    world: World,
+    s: float,
+    groups: list[list[str]],
+    mode: str = "standard",
 ) -> tuple[list[Built], dict[str, Any]]:
+    """mode="standard": the mechanism above, scaled by s.
+
+    mode="cross_only" (owner-approved post-hoc addition, see PREREGISTRATION.md AMENDMENTS):
+    every account replays its crew's script exactly once, keeps all its benign sessions,
+    gets benign-like jitter between steps and a benign signup time. Only the shared step
+    order, targets and text skeletons remain, i.e. the cross-account evidence. Ignores s.
+    """
+    if mode not in TEMPLATE_MODES:
+        raise ValueError(f"unknown template mode {mode!r}")
+    cross = mode == "cross_only"
     out: list[Built] = []
     meta: dict[str, Any] = {"templates": {}, "groups": {}}
     for gi, ids in enumerate(groups):
@@ -388,11 +405,15 @@ def build_template(
         for aid in ids:
             c_benign = benign.draw_created_at(rng, world)
             c = int(_lerp(c_benign, base_c + int(rng.integers(0, 2 * DAY)), s))
+            if cross:
+                c = c_benign  # no batch creation
             acct, p, sessions = _base(rng, world, aid, created_at=c)
-            sessions = benign.thin_sessions(rng, sessions, 1.0 - 0.7 * s)
+            sessions = benign.thin_sessions(rng, sessions, 1.0 if cross else 1.0 - 0.7 * s)
             evs = _flat(sessions)
             dev = p.devices[0]
-            for _ in range(int(rng.binomial(3, s))):
+            n_runs = 1 if cross else int(rng.binomial(3, s))
+            jitter = 0.9 if cross else 0.25
+            for _ in range(n_runs):
                 t = int(rng.integers(acct.created_at, world.end_ts - DAY))
                 ip = p.home_ip if rng.random() < 0.8 else benign.random_ip(rng)
                 for step in tpl["steps"]:
@@ -400,7 +421,7 @@ def build_template(
                         continue  # skipped step
                     reps = 2 if rng.random() < 0.05 else 1
                     for _ in range(reps):
-                        t += max(1, int(step["delay"] * rng.lognormal(0, 0.25)))
+                        t += max(1, int(step["delay"] * rng.lognormal(0, jitter)))
                         evs.append(_template_event(rng, world, p, t, ip, dev, step))
             out.append(
                 (

@@ -51,6 +51,8 @@ class GeneratorConfig:
     min_groups: int = 12
     group_size: tuple[int, int] = (4, 8)
     sizes: dict[str, int] = field(default_factory=lambda: dict(DEFAULT_SIZES))
+    # "standard" or "cross_only" (template_operator only; owner-approved post-hoc addition)
+    template_mode: str = "standard"
 
 
 @dataclass
@@ -125,7 +127,8 @@ def generate(cfg: GeneratorConfig) -> GeneratedData:
         )
     for i, (name, fam) in enumerate(FAMILIES.items()):
         rng_f = np.random.default_rng(child[2 + i])
-        built, fmeta = fam.build(rng_f, world, cfg.s, plan[name])
+        extra = {"mode": cfg.template_mode} if name == "template_operator" else {}
+        built, fmeta = fam.build(rng_f, world, cfg.s, plan[name], **extra)
         meta["families"][name] = {
             "coordinated": fam.coordinated,
             "channels": list(fam.channels),
@@ -151,6 +154,8 @@ def generate(cfg: GeneratorConfig) -> GeneratedData:
 def _cfg_dict(cfg: GeneratorConfig) -> dict[str, Any]:
     d = asdict(cfg)
     d["group_size"] = list(cfg.group_size)
+    if d["template_mode"] == "standard":
+        del d["template_mode"]  # keeps standard-mode output byte-identical to before the option
     return d
 
 

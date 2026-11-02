@@ -106,3 +106,25 @@ def test_meta_contains_no_per_account_labels(tmp_path: Path) -> None:
     meta = json.loads((tmp_path / "truth" / "meta.json").read_text())
     assert meta["config"]["seed"] == 2
     assert set(meta["families"]) == set(FAMILIES)
+
+
+def test_cross_only_template_mode_keeps_replays_and_benign_profile() -> None:
+    from triage_kit.eval.oracle import oracle_scores
+    from triage_kit.schema import group_events
+
+    std = generate(GeneratorConfig(seed=13, s=0.5, **SMALL))
+    xo = generate(GeneratorConfig(seed=13, s=0.5, template_mode="cross_only", **SMALL))
+    assert health_check(xo) == []
+    assert "template_mode" not in std.meta["config"]  # default output unchanged
+    assert xo.meta["config"]["template_mode"] == "cross_only"
+    # other families are untouched: identical events outside template_operator
+    fam = {r["account_id"]: r["family"] for r in std.labels}
+    key = lambda g: [e for e in g.events if fam[e.account_id] != "template_operator"]  # noqa: E731
+    assert key(std) == key(xo)
+    # every template account replays its script (oracle sees template targets in all of them)
+    data = group_events(xo.accounts, xo.events)
+    idx = [i for i, r in enumerate(xo.labels) if r["family"] == "template_operator"]
+    o = oracle_scores("template_operator", [data[i] for i in idx], xo.meta)
+    assert (o > 0).mean() > 0.95
+    with pytest.raises(ValueError, match="template mode"):
+        generate(GeneratorConfig(seed=1, template_mode="nope", **SMALL))

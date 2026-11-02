@@ -64,13 +64,19 @@ def load_prereg(path: Path) -> dict[str, Any]:
         raise ValueError(f"{path}: no ```prereg block")
     out: dict[str, Any] = yaml.safe_load(m.group(1))
     out.setdefault("extra_s", [])
+    out.setdefault("cross_only_runs", [])
     for am in re.finditer(r"```prereg-amendment\n(.*?)```", text, flags=re.DOTALL):
         out.update(yaml.safe_load(am.group(1)) or {})
     return out
 
 
-def load_run(results_root: Path, seed: int, s: float, n: int = 5000) -> dict[str, Any]:
-    return json.loads((results_root / f"seed{seed}_s{s:.2f}_n{n}" / "metrics.json").read_text())
+def load_run(
+    results_root: Path, seed: int, s: float, n: int = 5000, mode: str = "standard"
+) -> dict[str, Any]:
+    suffix = "" if mode == "standard" else f"_{mode}"
+    return json.loads(
+        (results_root / f"seed{seed}_s{s:.2f}_n{n}{suffix}" / "metrics.json").read_text()
+    )
 
 
 def heldout_split_of(family: str) -> str:
@@ -212,14 +218,16 @@ feature); <b>LLM reviewer</b> (here the offline <code>MockLLM</code>, whose scor
 prompt: {MOCK_TAG}). Metrics: PR-AUC with base rate, precision/recall at a review budget of
 k = {prereg["review_budget_k"]}, {prereg["bootstrap_samples"]:,}-sample stratified cluster bootstrap
 95% CIs (resampled by account, by group for coordinated families).</p>
-<p class="banner"><b>Disclosure.</b> The eval seeds have been run three times. (1) The first
-<code>make demo</code> failed the null control (4 of 84 cells); the cause, a split artifact that made
-test group members older than benign test accounts at s = 0, was confirmed on dev seeds and fixed in
-the split. (2) The second run passed and was published. (3) After reading it, the owner asked for
-better confidence intervals (few-cluster widening, a tie-aware null PR-AUC) and a better similarity
-feature (v2). All three were designed on dev seeds and declared, with dates, in PREREGISTRATION.md
-(AMENDMENTS) before this third run. No generator, detector rule or pre-registered model setting
-changed. Post-hoc items are labelled where they appear.</p>
+<p class="banner"><b>Disclosure.</b> <code>make demo</code> has been run on the eval seeds five
+times. (1) The first run failed the null control (4 of 84 cells); the cause, a split artifact that
+made test group members older than benign test accounts at s = 0, was confirmed on dev seeds and
+fixed in the split. (2) The second run passed and was published. (3) After reading it, the owner
+asked for better confidence intervals (few-cluster widening, a tie-aware null PR-AUC) and a better
+similarity feature (v2). (4) Then for a weaker signal level, s = 0.25. (5) Then for an
+owner-approved generator addition, a cross-account-only template mode (the default generator output
+is byte-identical to before). Every change after run 2 was designed on dev seeds and declared, with
+dates, in PREREGISTRATION.md (AMENDMENTS) before the run that used it. No detector rule or
+pre-registered model setting changed. Post-hoc items are labelled where they appear.</p>
 <table><tr><th>family</th><th>mechanism (as written before any detector)</th><th>evidence
 channel</th><th>abuse test accounts</th><th>test groups</th></tr>{"".join(rows)}</table>
 """
@@ -440,6 +448,71 @@ level's <code>results/&lt;run&gt;/metrics.json</code>. Pre-registered levels: 0,
 (PREREGISTRATION.md, AMENDMENTS): {extra}. A weaker signal shows where each approach starts to
 fail, and where the cross-account similarity features matter most.</p>
 <table><tr><th>family</th><th>split</th>{head}</tr>{"".join(rows)}</table>
+"""
+
+
+def _cross_only(
+    results_root: Path, prereg: dict[str, Any], by_s: dict[float, dict[str, Any]]
+) -> str:
+    if not prereg["cross_only_runs"]:
+        return ""
+    tf = "template_operator"
+    dets = ("rules", "lr", "gb", "gb+sim", "gb+sim2", "oracle")
+    rows, checks = [], []
+    for r in prereg["cross_only_runs"]:
+        sd, sv = int(r["seed"]), float(r["s"])
+        xo = load_run(results_root, sd, sv, mode="cross_only")
+        std = by_s.get(sv)
+        for split in ("in_family", heldout_split_of(tf)):
+            c = {d: cell(xo, split, tf, d) for d in dets}
+            rows.append(
+                f"<tr><td>{esc(split)}</td>"
+                + "".join(
+                    f"<td class=n>{num(v['ap'], d, v.get('ap_ci95'))}</td>" for d, v in c.items()
+                )
+                + f"<td class=n>{c['gb+sim2']['ap'] - c['gb']['ap']:+.3f}</td>"
+                + f"<td class=n>{f3(c['gb']['ap_random'])}</td></tr>"
+            )
+        a = {d: cell(xo, "in_family", tf, d)["ap"] for d in dets}
+        if std is not None:
+            g_std = cell(std, "in_family", tf, "gb")["ap"]
+            checks.append(
+                (
+                    "(a) gb clearly lower than in the standard run",
+                    a["gb"] < g_std,
+                    f"{a['gb']:.3f} vs {g_std:.3f}",
+                )
+            )
+        checks.append(
+            (
+                "(b) gb+sim2 beats gb by at least 0.10",
+                a["gb+sim2"] - a["gb"] >= 0.10,
+                f"{a['gb+sim2'] - a['gb']:+.3f}",
+            )
+        )
+        checks.append(
+            (
+                "(c) gb+sim2 beats gb+sim (v1)",
+                a["gb+sim2"] > a["gb+sim"],
+                f"{a['gb+sim2']:.3f} vs {a['gb+sim']:.3f}",
+            )
+        )
+        groups = xo["test_groups"].get(tf)
+    crows = "".join(
+        f"<tr><td>{esc(h)}</td><td class={'hit' if ok else 'miss'}>{'yes' if ok else 'no'}</td><td class=n>{esc(d)}</td></tr>"
+        for h, ok, d in checks
+    )
+    return f"""
+<h2>Template operator: cross-account evidence only</h2>
+<p><b>Post-hoc, exploratory, owner-approved generator addition</b> (PREREGISTRATION.md, AMENDMENTS).
+In this run every template-operator account replays its crew's script exactly once, keeps all its
+ordinary sessions, gets ordinary-looking timing between steps and an ordinary signup time. What is
+left is the shared step order, listing targets and text skeletons: evidence that exists only
+<i>across</i> accounts. The other five families are generated as in the s = {prereg["primary_s"]}
+run. {groups} template groups reached the test split.</p>
+<table><tr><th>split</th>{"".join(f"<th>{esc(d)}</th>" for d in dets)}<th>gb+sim2 − gb</th>
+<th>null PR-AUC (gb)</th></tr>{"".join(rows)}</table>
+<table><tr><th>declared expectation (exploratory)</th><th></th><th>detail</th></tr>{crows}</table>
 """
 
 
@@ -665,6 +738,7 @@ def build_report(
             _in_vs_held(primary, s1, prereg),
             _template(by_s),
             _sweep(by_s, prereg, pf),
+            _cross_only(results_root, prereg, by_s),
             _budget(primary, prereg["review_budget_k"]),
             _cost(primary, bundles),
             _expected(prereg, primary, s1, null, pf, extra),
