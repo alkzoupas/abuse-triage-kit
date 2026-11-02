@@ -328,3 +328,34 @@ Dev seed 101 only, generator only (no detector run). Declared before the eval-se
 4. **Decision.** No second revision (that would be tuning to pass a threshold). The eval run
    goes ahead as declared, and the report flags that the mode missed its acceptance check
    narrowly. Expectations (a)–(d) are unchanged.
+
+### 2026-11-03 — post-hoc, owner-requested: template-similarity v3 (rare ordered-pair overlap)
+
+Requested by the owner (PROGRESS.md Q7) after v1 and v2 found nothing in the ordinary-script
+mode. Diagnosis that motivates it (dev 101, after that run): whole-account Jaccard is diluted
+by benign history, so a template account's best crew-mate Jaccard (0.032) is below its best
+benign neighbour's (0.042). v3 counts shared rare evidence instead of a ratio, so a short shared
+script is not drowned by a long ordinary history. Designed knowing the template-operator
+mechanism and after seeing the ordinary-mode result; exploratory, labelled as such. v1 stays
+the pre-registered `+sim`; v2 is unchanged. Declared before writing the code and before any
+run. One fixed design, no tuning grid:
+
+- tokens: the account's view targets in time order (all sessions joined; other events ignored);
+  every ordered pair `x>y` with x ≠ y and y one to three views after x; plus `q:<text>` for each
+  search query
+- vocabulary: tokens present in at least 2 and at most max(2, 0.2% of N) reference accounts
+  (N = reference population, events only, no labels)
+- shared(i, j) = number of vocabulary tokens accounts i and j both have
+- value = log(1 + mean of the 3 largest shared(i, j) over other accounts j)
+- new feature-model variants `lr+sim3`, `gb+sim3` (same model settings as the others), added
+  to every run's grid, so every eval-seed run is repeated (the seventh `make demo`). The null
+  control grows from 108 to 132 cells, with the Bonferroni alpha recomputed from the count.
+- Dev check, once, on dev seed 101 (reported, not used to tune): v3 alone, template vs benign,
+  ROC-AUC and PR-AUC in the standard (s = 0, 0.5), cross_only and ordinary modes.
+
+Expectations (exploratory), eval seed 9001, template_operator in-family:
+(a) ordinary mode: `gb+sim3` beats `gb` by at least 0.10 PR-AUC;
+(b) ordinary mode: `gb+sim3` beats `gb+sim2`;
+(c) the null control passes with the new cells (no Bonferroni-corrected interval excludes the
+base rate or 0.5; no non-degenerate cell excludes its null PR-AUC);
+(d) standard s = 0.5 run: `gb+sim3` is no more than 0.02 below `gb` (adding it does no harm).
