@@ -20,6 +20,10 @@
   only; earlier modes byte-identical, digest checked). Dev acceptance check failed as declared
   (oracle 0.144), one revision (uniform targets), narrow miss (oracle 0.899, login ROC 0.665), logged.
   Result: gb 0.010 (a hit), gb+sim2 +0.001 (b MISS), v2 vs v1 (c MISS), oracle 0.570 (d MISS).
+- [x] 15 Post-hoc similarity v3 (rare ordered view pairs + queries, shared counts, top-3) + lr/gb+sim3.
+  Dev 101 ordinary, feature alone PR: v2 0.032, v3 0.635. Eval 9001 ordinary in-family: gb+sim3 0.607
+  vs gb 0.010 (a, b hit); held-out no gain; standard s=0.5 +0.038 (d hit); null 1/132 strict miss
+  (lr+sim3 card_testing, CI just below null PR-AUC) -> (c) MISS. Seventh eval-seed run, disclosed.
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
@@ -58,8 +62,9 @@
 - Q6 answered (ordinary-action scripts): done. Per-account signal gone, but v1 and v2 find nothing either.
   Diagnosis (dev 101, post-run): sim2 alone ROC 0.447; best crew-mate Jaccard 0.032 < best benign 0.042,
   because one ~10-event replay is diluted by ~100 benign tokens.
-- Q7 Try a post-hoc similarity v3 built for short shared subsequences (e.g. containment of rare ordered
-  view-target pairs) on the ordinary mode? It would be a seventh eval-seed run.
+- Q7 answered (v3): done. Finds ordinary-script crews in-family (0.607), not held out.
+- Q8 v3 rests on 7 test groups and was designed after the result it targets. Confirm on fresh eval
+  seeds (e.g. 9004-9006, never used) with the design frozen, rather than re-running 9001?
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
