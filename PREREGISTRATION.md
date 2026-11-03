@@ -475,3 +475,20 @@ right null (PR-AUC: non-degenerate cells vs null PR-AUC; ROC-AUC: all cells vs 0
   most 7.5%). The confirmation-seed misses are put down to the base-rate reference (5 of the 7
   contain their null PR-AUC) plus chance (2 marginal ones on 9008, in a 132-cell family of
   correlated tests).
+
+### 2026-11-03 (late, later) — the null control's PR-AUC reference becomes the null PR-AUC
+
+Approved by the owner (PROGRESS.md Q12) after the dev-seed calibration check above. Declared before
+the code change. For a continuous score the expected PR-AUC under random labels (the null PR-AUC,
+amendment of 2026-11-02 evening) sits above the base rate, so a tight interval can exclude the base
+rate while behaving exactly as chance predicts (5 of the 7 confirmation-seed misses).
+
+- **New primary null-control test**, for the report's verdict and every run from now on: no cell's
+  Bonferroni-corrected PR-AUC interval excludes its null PR-AUC (for a degenerate cell, which equals
+  the base rate by construction, the base rate), and no ROC-AUC interval excludes 0.5. ROC-AUC is
+  unchanged.
+- **The pre-registered base-rate test is kept and still shown**, labelled as the pre-registered
+  test. H1 in "Expected vs actual" is still scored by it, since that is how it was pre-registered.
+  The confirmations' expectation (d) is still scored by the base-rate test it was declared with.
+  No past verdict is rewritten; the report shows both where they differ.
+- The dev-seed acceptance tests keep asserting both tests, so nothing is weakened.
