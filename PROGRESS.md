@@ -32,6 +32,11 @@
   each), `make confirm-large`, commit 6dfa5fd, 38m50s. CONFIRMED: gains +0.498 / +0.376 / +0.371.
   (b), (c) hit. (d) MISS: seed 9008 null 5/132 Bonferroni misses (lr x4 variants on scraping
   heldout_2, gb+sim2 on ato; all borderline, none template). Nothing fixed or re-run.
+- [x] 18 Widening check at 20,000 accounts (dev 101-103, s=0, decision rule fixed in advance): ADEQUATE.
+  Pooled uncorrected 95% misses vs the right null: PR-AUC 3.6%, ROC 3.5% (5,000: 6.7%, 3.5%);
+  0 Bonferroni misses on all three dev seeds at 20k. Confirmation-seed misses: 5 of 7 contain their
+  null PR-AUC (base-rate reference artefact), 2 marginal. Also fixed: confirmation sections' count of
+  cells excluding the null PR-AUC (was strict-only, showed 0 where it was 2).
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
@@ -76,9 +81,11 @@
   >= 9 views ROC 0.93-0.96, <= 6 views 0.64-0.66, same on all three seeds. 9005 drew short scripts
   (median 7 views). Benign noise floor ~1.8 shared rare view pairs; queries contribute nothing.
 - Q10 answered (option 2, more template groups): done, v3 confirmed at 20,000 accounts per seed.
-- Q11 Null control at 20,000 accounts: 5/132 borderline misses on one seed (0 on the other two), from
-  pre-registered and post-hoc models alike. Worth checking whether the few-cluster widening is too
-  narrow at ~50 groups, or accept as the expected rate across 3x132 correlated cells?
+- Q11 answered (check widening on dev seeds at 20k): widening adequate, see story 18.
+- Q12 Proposal, not applied: make the null PR-AUC (not the base rate) the primary PR-AUC reference
+  in the null control, since for continuous scores the base rate sits below what chance gives. That
+  changes a pre-registered acceptance test, so it would be a dated amendment applied to future runs
+  only, with past verdicts kept as they were. Do it?
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.

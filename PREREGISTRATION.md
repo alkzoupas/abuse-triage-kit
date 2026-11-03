@@ -463,3 +463,15 @@ cell. No eval or confirmation seed is used below, and nothing changes in the met
   the widening is judged adequate at ~50 groups and the misses are put down to the base-rate
   reference plus chance. If it is above 7.5% for either, the intervals are judged too narrow at
   that size; that is reported with a proposed fix for the owner to approve, and not applied here.
+
+Result (dev seeds only, run once as declared; nothing in the method changed). Bonferroni misses of
+132 cells against the base rate / the null PR-AUC / ROC 0.5, and uncorrected 95% misses against the
+right null (PR-AUC: non-degenerate cells vs null PR-AUC; ROC-AUC: all cells vs 0.5):
+- 5,000 accounts: dev 101: 0 / 0 / 0, 12/123 and 6/132; dev 102: 0 / 1 / 0, 7/123 and 2/132;
+  dev 103: 0 / 0 / 0, 6/126 and 6/132. Pooled uncorrected: PR-AUC 6.7%, ROC-AUC 3.5%.
+- 20,000 accounts: dev 101: 0 / 0 / 0, 2/128 and 7/132; dev 102: 0 / 0 / 0, 8/130 and 0/132;
+  dev 103: 0 / 0 / 0, 4/130 and 7/132. Pooled uncorrected: PR-AUC 3.6%, ROC-AUC 3.5%.
+- **Decision by the fixed rule: the widening is adequate at ~50 groups** (3.6% and 3.5%, both at
+  most 7.5%). The confirmation-seed misses are put down to the base-rate reference (5 of the 7
+  contain their null PR-AUC) plus chance (2 marginal ones on 9008, in a 132-cell family of
+  correlated tests).

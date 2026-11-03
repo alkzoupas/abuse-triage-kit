@@ -143,7 +143,11 @@ below). Synthetic data only.
   (+0.001 to +0.010). Seed 9008's null control had 5 Bonferroni misses of 132, all borderline
   and none on the template operator: four are the same `lr` model with and without each
   similarity column on scraping (held-out fold 2), one is `gb+sim2` on account takeover. The
-  first confirmation's "not confirmed" also stays on record. Fair reading: in-family, v3 reliably
+  first confirmation's "not confirmed" also stays on record. A follow-up check on dev seeds at
+  20,000 accounts, with its decision rule fixed in advance, found the intervals well calibrated
+  (uncorrected 95% intervals miss the right null 3.6% of the time for PR-AUC, 3.5% for ROC-AUC).
+  Most of the confirmation-seed misses come from testing against the base rate, which for a
+  continuous score sits below what chance gives: 5 of the 7 cells contain their null PR-AUC. Fair reading: in-family, v3 reliably
   finds crews whose scripts look ordinary when there are enough of them to judge, and it works
   less well on short scripts; it does nothing for a family the model never saw.
 - **Expected vs actual:** 8 of 12 pre-registered winner calls hit with the pre-registered
