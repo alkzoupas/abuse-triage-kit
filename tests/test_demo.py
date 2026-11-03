@@ -43,5 +43,6 @@ def test_demo_offline_under_ten_minutes(tmp_path: Path) -> None:
     assert "<h2>Template-similarity v3 (post-hoc)</h2>" in page
     assert "<h2>Confirmation of similarity v3 on fresh seeds</h2>" in page
     assert "make confirm" in page  # demo alone does not run the confirmation seeds
+    assert "Second confirmation of similarity v3: more template groups" in page
     assert "rules encode human" in page and "designed knowing this mechanism" in page
     assert "<script" not in page  # static: no JS

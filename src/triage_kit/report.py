@@ -67,6 +67,7 @@ def load_prereg(path: Path) -> dict[str, Any]:
     out.setdefault("cross_only_runs", [])
     out.setdefault("ordinary_runs", [])
     out.setdefault("confirmation_seeds", [])
+    out.setdefault("confirmation_large", {})
     for am in re.finditer(r"```prereg-amendment\n(.*?)```", text, flags=re.DOTALL):
         out.update(yaml.safe_load(am.group(1)) or {})
     return out
@@ -669,41 +670,88 @@ def _confirm(results_root: Path, prereg: dict[str, Any]) -> str:
     seeds = [int(x) for x in prereg["confirmation_seeds"]]
     if not seeds:
         return ""
-    head = (
-        """
-<h2>Confirmation of similarity v3 on fresh seeds</h2>
-<p>Declared in PREREGISTRATION.md (AMENDMENTS, 2026-11-03 later) before any run on these seeds,
-with every detector, feature and setting frozen. Seeds """
-        + ", ".join(map(str, seeds))
-        + """ were
-never generated or evaluated before. <b>Criterion (decided in advance):</b> v3 is confirmed only if,
-in the ordinary-script mode on template_operator in-family, <code>gb+sim3</code> beats
-<code>gb</code> by at least 0.10 PR-AUC on each seed.</p>"""
+    intro = (
+        "Declared in PREREGISTRATION.md (AMENDMENTS, 2026-11-03 later) before any run on these "
+        "seeds, with every detector, feature and setting frozen."
     )
+    return _confirm_core(
+        results_root,
+        prereg,
+        seeds,
+        5000,
+        True,
+        "Confirmation of similarity v3 on fresh seeds",
+        intro,
+        "make confirm",
+    )
+
+
+def _confirm_large(results_root: Path, prereg: dict[str, Any]) -> str:
+    """Second confirmation: more template groups (amendment 2026-11-03, night later)."""
+    cl = prereg["confirmation_large"]
+    if not cl:
+        return ""
+    n = int(cl["n_accounts"])
+    intro = (
+        "Declared in PREREGISTRATION.md (AMENDMENTS, 2026-11-03 night, later) before any run on "
+        f"these seeds, with everything frozen. {n:,} accounts per seed instead of 5,000, so about "
+        "four times as many template groups reach the test split (same population mix and base "
+        "rates). Caveat stated in advance: v3's vocabulary cap is relative to the population and "
+        "its neighbours come from a population four times larger, so this also tests v3 in a "
+        "bigger marketplace. The first confirmation's verdict above stays on record."
+    )
+    return _confirm_core(
+        results_root,
+        prereg,
+        [int(x) for x in cl["seeds"]],
+        n,
+        False,
+        "Second confirmation of similarity v3: more template groups",
+        intro,
+        "make confirm-large",
+    )
+
+
+def _confirm_core(
+    results_root: Path,
+    prereg: dict[str, Any],
+    seeds: list[int],
+    n: int,
+    with_std: bool,
+    title: str,
+    intro: str,
+    cmd: str,
+) -> str:
+    head = f"""
+<h2>{esc(title)}</h2>
+<p>{intro} Seeds {", ".join(map(str, seeds))} were never generated or evaluated before.
+<b>Criterion (decided in advance):</b> v3 is confirmed only if, in the ordinary-script mode on
+template_operator in-family, <code>gb+sim3</code> beats <code>gb</code> by at least 0.10 PR-AUC on
+each seed.</p>"""
     s = float(prereg["primary_s"])
     try:
         runs = {
             sd: (
-                load_run(results_root, sd, 0.0),
-                load_run(results_root, sd, s),
-                load_run(results_root, sd, s, mode="ordinary"),
+                load_run(results_root, sd, 0.0, n=n),
+                load_run(results_root, sd, s, n=n) if with_std else None,
+                load_run(results_root, sd, s, n=n, mode="ordinary"),
             )
             for sd in seeds
         }
     except FileNotFoundError:
-        return head + "<p><b>Not run yet.</b> Run <code>make confirm</code>.</p>"
+        return head + f"<p><b>Not run yet.</b> Run <code>{esc(cmd)}</code>.</p>"
     tf = "template_operator"
     ho = heldout_split_of(tf)
     dets = ("gb", "gb+sim2", "gb+sim3", "oracle")
+    keys = "abcde" if with_std else "abcd"
     rows = []
-    ok = {k: True for k in "abcde"}
-    det: dict[str, list[str]] = {k: [] for k in "abcde"}
+    ok = {k: True for k in keys}
+    det: dict[str, list[str]] = {k: [] for k in keys}
     for sd, (nul, std, od) in runs.items():
-        for label, run, split in (
-            ("ordinary", od, "in_family"),
-            ("ordinary", od, ho),
-            (f"standard s={s:g}", std, "in_family"),
-        ):
+        shown = [("ordinary", od, "in_family"), ("ordinary", od, ho)]
+        if std is not None:
+            shown.append((f"standard s={s:g}", std, "in_family"))
+        for label, run, split in shown:
             c = {d: cell(run, split, tf, d) for d in dets}
             rows.append(
                 f"<tr><td class=n>{sd}</td><td>{esc(label)}</td><td>{esc(split)}</td>"
@@ -715,25 +763,25 @@ in the ordinary-script mode on template_operator in-family, <code>gb+sim3</code>
             )
         a = {d: cell(od, "in_family", tf, d)["ap"] for d in dets}
         h = {d: cell(od, ho, tf, d)["ap"] for d in dets}
-        g = {d: cell(std, "in_family", tf, d)["ap"] for d in dets}
-        gain, gain_ho, gain_std = (
-            a["gb+sim3"] - a["gb"],
-            h["gb+sim3"] - h["gb"],
-            g["gb+sim3"] - g["gb"],
-        )
+        gain, gain_ho = a["gb+sim3"] - a["gb"], h["gb+sim3"] - h["gb"]
         bonf = sum(
             not (c["ap_ci_bonf"][0] <= c["base_rate"] <= c["ap_ci_bonf"][1])
             or not (c["roc_ci_bonf"][0] <= 0.5 <= c["roc_ci_bonf"][1])
             for c in nul["cells"]
         )
         strict = sum(_null_bad(c) for c in nul["cells"]) - bonf
-        for k, hit, txt in (
+        res = [
             ("a", gain >= 0.10, f"{sd}: {gain:+.3f}"),
             ("b", a["gb+sim3"] > a["gb+sim2"], f"{sd}: {a['gb+sim3']:.3f} vs {a['gb+sim2']:.3f}"),
             ("c", gain_ho < 0.05, f"{sd}: {gain_ho:+.3f}"),
             ("d", bonf == 0, f"{sd}: {bonf} of {nul['n_cells']} (strict misses: {strict})"),
-            ("e", gain_std >= -0.02, f"{sd}: {gain_std:+.3f}"),
-        ):
+        ]
+        if std is not None:
+            g = {d: cell(std, "in_family", tf, d)["ap"] for d in dets}
+            res.append(
+                ("e", g["gb+sim3"] - g["gb"] >= -0.02, f"{sd}: {g['gb+sim3'] - g['gb']:+.3f}")
+            )
+        for k, hit, txt in res:
             ok[k] = ok[k] and bool(hit)
             det[k].append(txt)
     names = {
@@ -743,7 +791,7 @@ in the ordinary-script mode on template_operator in-family, <code>gb+sim3</code>
         "d": "(d) null control: no Bonferroni miss (base rate / 0.5) on each seed",
         "e": "(e) standard: gb+sim3 no more than 0.02 below gb on each seed",
     }
-    checks = [(names[k], ok[k], "; ".join(det[k])) for k in "abcde"]
+    checks = [(names[k], ok[k], "; ".join(det[k])) for k in keys]
     verdict = (
         '<p class="hit"><b>v3 confirmed</b> by the pre-declared criterion.</p>'
         if ok["a"]
@@ -985,6 +1033,7 @@ def build_report(
             _ordinary(results_root, prereg),
             _sim3(results_root, prereg, by_s, null),
             _confirm(results_root, prereg),
+            _confirm_large(results_root, prereg),
             _budget(primary, prereg["review_budget_k"]),
             _cost(primary, bundles),
             _expected(prereg, primary, s1, null, pf, extra),

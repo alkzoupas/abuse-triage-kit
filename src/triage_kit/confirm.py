@@ -3,6 +3,7 @@ AMENDMENTS, 2026-11-03 later). Per confirmation seed: standard s = 0 (null contr
 standard s = 0.5 and ordinary-mode s = 0.5, each with bootstrap CIs. Then rebuilds the
 report, which gains a confirmation section. Needs `make demo` results for the rest of the
 report. Separate from `make demo` so the demo stays under its 10-minute limit.
+`make confirm-large` (`--large`) runs the second confirmation at 20,000 accounts per seed.
 """
 
 from __future__ import annotations
@@ -25,13 +26,23 @@ def plan(prereg: dict[str, object]) -> list[tuple[int, float, str]]:
     ]
 
 
-def main(out_dir: Path = Path(".")) -> Path:
+def plan_large(prereg: dict[str, object]) -> list[tuple[int, float, str]]:
+    """Second confirmation (more template groups): null and ordinary mode per seed."""
+    s = float(prereg["primary_s"])  # type: ignore[arg-type]
+    cl = prereg["confirmation_large"]
+    seeds = [int(x) for x in cl["seeds"]]  # type: ignore[index]
+    return [(sd, sv, mode) for sd in seeds for sv, mode in ((0.0, "standard"), (s, "ordinary"))]
+
+
+def main(out_dir: Path = Path("."), large: bool = False) -> Path:
     prereg = load_prereg(ROOT / "PREREGISTRATION.md")
+    n = int(prereg["confirmation_large"]["n_accounts"]) if large else 5000
     t0 = time.time()
-    for sd, sv, mode in plan(prereg):
+    for sd, sv, mode in plan_large(prereg) if large else plan(prereg):
         cfg = RunConfig(
             seed=sd,
             s=sv,
+            n_accounts=n,
             n_boot=prereg["bootstrap_samples"],
             k=prereg["review_budget_k"],
             data_root=out_dir / "data",
@@ -51,4 +62,6 @@ def main(out_dir: Path = Path(".")) -> Path:
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    main(large="--large" in sys.argv[1:])
