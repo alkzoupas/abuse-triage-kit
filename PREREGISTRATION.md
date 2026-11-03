@@ -521,3 +521,8 @@ the report labels it so.
 - **Reported:** per-family PR-AUC with 95% bootstrap CIs on the in-family test cells, next to the
   rules and `gb+sim`. Exploratory score of H6's ranking part only (strongest on review_ring and
   ato, weakest on template_operator); its cost part stays untestable.
+
+Procedure change before any scoring (same date): the batches are about 2.4M tokens in total, too
+large to pass inline. Each subagent instead gets the path of its batch file and of its reply file,
+and is allowed exactly two tools: Read on its batch file and Write on its reply file. Its reply
+never passes through the orchestrating session. Everything else above is unchanged.

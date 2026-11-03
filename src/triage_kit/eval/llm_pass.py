@@ -23,6 +23,7 @@ from triage_kit.detectors.llm.anthropic_provider import AnthropicProvider
 from triage_kit.detectors.llm.render import PROMPT_VERSION, render_prompt
 from triage_kit.detectors.llm.reviewer import LLMReviewer
 from triage_kit.detectors.llm.types import approx_tokens
+from triage_kit.eval.llm_bundle import bundle_metrics
 from triage_kit.eval.metrics import load_prices
 from triage_kit.eval.run_eval import ROOT, RunConfig
 from triage_kit.eval.splits import make_splits
@@ -68,7 +69,8 @@ def main(
         write_generated(generate(GeneratorConfig(seed=a.seed, s=a.s, n_accounts=a.n)), data_dir)
     data = read_dataset(data_dir)
     labels = load_truth(data_dir).labels  # used ONLY to pick the test split, never sent
-    test_ids = sorted(make_splits([ae.account for ae in data], labels)[0].test_ids)
+    split = make_splits([ae.account for ae in data], labels)[0]
+    test_ids = sorted(split.test_ids)
     if a.limit:
         test_ids = test_ids[: a.limit]
     by_id = {ae.account_id: ae for ae in data}
@@ -113,6 +115,10 @@ def main(
         "scores": scores,
         "tokens_in_total": sum(c.tokens_in for c in rev.calls),
         "tokens_out_total": sum(c.tokens_out for c in rev.calls),
+        # per-family metrics on the in-family test cells (scored accounts only)
+        "metrics": bundle_metrics(
+            RunConfig(seed=a.seed, s=a.s, n_accounts=a.n, n_boot=1000), split, labels, scores
+        ),
     }
     out = cfg.results_root / cfg.name
     out.mkdir(parents=True, exist_ok=True)
