@@ -51,6 +51,7 @@ rebuilt from seeds; the same seed gives byte-identical data and metrics.
 | Evaluation entry point | `python -m triage_kit.eval.run_eval --seed 101 --s 0.5` |
 | Frozen v3 confirmation on fresh seeds (after `make demo`) | `make confirm` |
 | Second v3 confirmation, 20,000 accounts per seed (~40 min) | `make confirm-large` |
+| LLM pass without an API key: Claude Code subagents as the reviewer (exploratory) | `python -m triage_kit.eval.subagent_pass prepare` / `collect` |
 | Report | `src/triage_kit/report.py` |
 | Bring your own events | [docs/byo-events.md](docs/byo-events.md), `python -m triage_kit.byo` |
 
@@ -155,9 +156,25 @@ below). Synthetic data only.
 - **Expected vs actual:** 8 of 12 pre-registered winner calls hit with the pre-registered
   intervals, 7 of 12 with the widened ones (review_ring in-family becomes a tie). Misses are
   listed in the report.
-- **LLM: no finding.** Every LLM number in the report is labelled *MOCK — not a result*.
-  Mock token counts priced with the placeholder prices in `config/prices.yaml` give 1.41 per
-  1,000 accounts; that is a plumbing check, not a cost.
+- **LLM, offline: still no API result.** Every `llm:mock` number in the report is labelled
+  *MOCK — not a result*; mock token counts priced with placeholder prices give 1.41 per 1,000
+  accounts, a plumbing check, not a cost.
+- **LLM, exploratory pass with Claude Code subagents: a strong zero-shot reviewer on these
+  synthetic families.** Without an API key, the owner asked for fresh Claude Code subagents
+  (model `claude-opus-5-5`) to act as the reviewer, declared in advance as exploratory. They got
+  the kit's own reviewer prompt, about 47 accounts per subagent, with members of the same group
+  kept in different batches. All 1,922 test accounts of seed 9001 (s = 0.5) were scored, with 0
+  unparseable replies. PR-AUC on the in-family cells, with the trained `gb+sim` in-family and
+  held out for comparison: account takeover 0.988 (`gb+sim` 0.996 / 0.093 held out), card testing
+  0.951 (0.936 / 0.227), scraping 0.962 (0.952 / 0.442), template operator 0.868 (0.774 / 0.770),
+  promo abuse 0.809 (0.819 / 0.763), review ring 0.581 [0.393, 0.729] (0.686 / 0.536). It roughly
+  matches the trained model where that model has seen the family, and is far better where it has
+  not, because it needs no training data. H6's ranking part missed: review ring was the
+  weakest family, not the template operator. Read this with care: the reviewer saw several
+  accounts at once inside Claude Code rather than one per API call; there are no token counts, so
+  no cost; it is one seed; and the synthetic families were written by a Claude model from
+  textbook mechanisms, so a Claude reviewer may share the priors that make them easy. It says
+  little about real abuse.
 
 **How these numbers came about.** The eval seeds were run several times, and the report says so.
 The first run failed the null control because of a split artifact (fixed). The second passed.
