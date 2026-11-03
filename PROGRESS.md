@@ -70,4 +70,4 @@
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
 
 ## Last check
-- `make test`: 105 passed in 722.15s (0:12:02) (exit 0); `make lint`, `make typecheck` exit 0; `make demo` 8m20s, null 0/108.
+- `make test`: 108 passed in 816.12s (0:13:36) (exit 0); `make lint`, `make typecheck` exit 0; `make demo` 9m55s, null 0/132 (base rate), 1/132 strict.
