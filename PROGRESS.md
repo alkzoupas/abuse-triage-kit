@@ -41,6 +41,13 @@
   pre-registered base-rate test kept, shown, and still scores H1 and the confirmations' (d). Re-scored
   existing null runs, primary / pre-registered fails: 9001 1/0 (lr+sim3 card_testing, below chance),
   9004 0/0, 9005 0/0, 9006 0/2, 9007 0/0, 9008 2/5, 9009 0/0.
+- [x] 20 Exploratory LLM pass with Claude Code subagents (no API key in the environment; owner-requested,
+  declared before scoring). 41 fresh general-purpose subagents (claude-opus-5-5), ~47 accounts each,
+  group members split across batches; each may only Read its batch and Write its reply. Seed 9001
+  s=0.5, 1,922/1,922 scored, 0 unparsed, ~8M subagent tokens. PR-AUC: ato 0.988, card 0.951,
+  scraping 0.962, template 0.868, promo 0.809, ring 0.581. H6 ranking part MISS (ring weakest).
+  Also fixed: the report's Real LLM pass table read metrics nothing computed (now computed when a
+  bundle is written, for the API pass too).
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
@@ -88,9 +95,12 @@
 - Q11 answered (check widening on dev seeds at 20k): widening adequate, see story 18.
 - Q12 answered (switch to null PR-AUC): done, story 19. The primary eval seed now shows FAIL on one
   below-chance cell; reported as is.
+- Q13 The subagent pass is batched and inside Claude Code. An API pass (one account per call, real
+  token counts) would test H6 properly and give a cost; it needs an ANTHROPIC_API_KEY in the
+  environment's settings. Worth doing once a key is available?
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
 
 ## Last check
-- `make test`: 110 passed in 653.14s (0:10:53) (exit 0); lint, typecheck exit 0; `make demo` 9m55s, null 1/132 primary (null PR-AUC), 0/132 pre-registered (base rate); `make confirm` 13m08s; `make confirm-large` 38m50s.
+- `make test`: 113 passed in 665.97s (0:11:05) (exit 0); lint, typecheck exit 0; `make demo` 9m55s, null 1/132 primary (null PR-AUC), 0/132 pre-registered (base rate); `make confirm` 13m08s; `make confirm-large` 38m50s.

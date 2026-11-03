@@ -492,3 +492,37 @@ rate while behaving exactly as chance predicts (5 of the 7 confirmation-seed mis
   The confirmations' expectation (d) is still scored by the base-rate test it was declared with.
   No past verdict is rewritten; the report shows both where they differ.
 - The dev-seed acceptance tests keep asserting both tests, so nothing is weakened.
+
+### 2026-11-03 (night) — exploratory LLM pass with Claude Code subagents as the reviewer
+
+Requested by the owner: there is no API key in the cloud environment, and the owner asked for
+Claude Code subagents with minimum context to act as the reviewer. Declared before writing the
+runner and before any account is scored. **This is not the pre-registered API reviewer**, and
+the report labels it so.
+
+- **Reviewer:** fresh `general-purpose` Claude Code subagents, started cold (not forks of the
+  session that built the kit), on the session's default model; the model the session reports is
+  recorded. Each is told to use no tools and to answer only from the text it is given. That cannot
+  be fully verified from outside: subagents have file tools.
+- **Input:** the kit's own reviewer prompt (`render_prompt`, version v1) verbatim for each account,
+  about 48 accounts per subagent, with a short wrapper asking for one JSON line per account
+  (`{"id": ..., "verdict": ..., "score": ..., "rationale": ...}`) and to judge each account on its
+  own. Replies are parsed per account with the kit's `parse_verdict`; a missing or unparseable
+  line scores 0.5, as in the API pass.
+- **Data:** eval seed 9001, s = 0.5, standard mode, every account in the test split (1,922). Order
+  shuffled with a fixed seed. Labels are used only to keep members of the same group (review ring
+  or template crew) in different batches, so no reviewer sees two crew-mates at once; no label or
+  group id appears in any prompt.
+- **Known differences from the API pass:** batched review (a subagent sees about 48 unrelated
+  accounts at once), the Claude Code system prompt around the request, no token counts (so no cost
+  figure), and no exact reproducibility.
+- **Pilot:** one batch is run first to check the reply format. Its scores are kept if the
+  procedure does not change; if it changes, the pilot is discarded and rerun.
+- **Reported:** per-family PR-AUC with 95% bootstrap CIs on the in-family test cells, next to the
+  rules and `gb+sim`. Exploratory score of H6's ranking part only (strongest on review_ring and
+  ato, weakest on template_operator); its cost part stays untestable.
+
+Procedure change before any scoring (same date): the batches are about 2.4M tokens in total, too
+large to pass inline. Each subagent instead gets the path of its batch file and of its reply file,
+and is allowed exactly two tools: Read on its batch file and Write on its reply file. Its reply
+never passes through the orchestrating session. Everything else above is unchanged.

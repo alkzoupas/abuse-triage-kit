@@ -880,6 +880,7 @@ def _cost(primary: dict[str, Any], bundles: list[dict[str, Any]]) -> str:
         f"<td class=n>{b['tokens_in_total'] / b['n_scored']:.0f} / {b['tokens_out_total'] / b['n_scored']:.0f}</td>"
         f"<td class=n>see prices.yaml</td></tr>"
         for b in bundles
+        if b.get("tokens_in_total") is not None
     )
     return f"""
 <h2>Cost</h2>
@@ -1015,7 +1016,7 @@ def _replication(
 """
 
 
-def _bundles(bundles: list[dict[str, Any]], primary_cells: dict[str, Any]) -> str:
+def _bundles(bundles: list[dict[str, Any]], primary: dict[str, Any]) -> str:
     if not bundles:
         return (
             "<h2>Real LLM pass</h2><p>No real-model results bundle found. All LLM numbers in this "
@@ -1023,16 +1024,47 @@ def _bundles(bundles: list[dict[str, Any]], primary_cells: dict[str, Any]) -> st
         )
     out = ["<h2>Real LLM pass</h2>"]
     for b in bundles:
+        sub = b.get("provider") == "claude-code-subagent"
+        if sub:
+            out.append(
+                '<p class="banner"><b>Exploratory, not the pre-registered API reviewer.</b> Scored '
+                "by Claude Code subagents (PREREGISTRATION.md, AMENDMENTS, 2026-11-03 night): about 48 "
+                "accounts per subagent, the kit's reviewer prompt inside Claude Code's own system "
+                "prompt, no token counts and no exact reproducibility. "
+                f"{esc(str(b.get('n_unparsed_scored_0.5', 0)))} accounts had no parseable reply and "
+                "score 0.5.</p>"
+            )
         out.append(
             f"<p>Model <code>{esc(b['model'])}</code>, {b['n_scored']} test accounts, prompt "
-            f"{esc(b['prompt_version'])}. Metrics on the scored subset only:</p>"
-            f"<table><tr><th>family</th><th>PR-AUC</th><th>base rate</th></tr>"
-            + "".join(
-                f"<tr><td>{esc(f)}</td><td class=n>{f3(v['ap'])}</td><td class=n>{f3(v['base_rate'])}</td></tr>"
-                for f, v in b.get("_metrics", {}).items()
-            )
-            + "</table>"
+            f"{esc(b['prompt_version'])}. In-family test cells, scored accounts only; rules and "
+            "<code>gb+sim</code> on the full cells for comparison.</p>"
+            "<table><tr><th>family</th><th>LLM PR-AUC [95% CI]</th><th>null PR-AUC</th>"
+            "<th>rules</th><th>gb+sim</th><th>abuse accounts scored</th></tr>"
         )
+        for f, v in b.get("metrics", b.get("_metrics", {})).items():
+            r = cell(primary, "in_family", f, "rules")["ap"]
+            g = cell(primary, "in_family", f, "gb+sim")["ap"]
+            out.append(
+                f"<tr><td>{esc(f)}</td><td class=n>{num(v.get('ap'), 'llm', v.get('ap_ci95'))}</td>"
+                f"<td class=n>{f3(v.get('ap_random'))}</td><td class=n>{f3(r)}</td>"
+                f"<td class=n>{f3(g)}</td><td class=n>{v.get('n_pos', '')}</td></tr>"
+            )
+        out.append("</table>")
+        aps = {f: v["ap"] for f, v in b.get("metrics", {}).items() if v.get("ap") is not None}
+        if len(aps) >= 3:
+            order = sorted(aps, key=lambda f: -aps[f])
+            top2_ok = set(order[:2]) == {"review_ring", "ato"}
+            low_ok = order[-1] == "template_operator"
+            out.append(
+                "<table><tr><th>H6 ranking part (exploratory for this pass)</th><th></th>"
+                "<th>detail</th></tr>"
+                f"<tr><td>strongest on review_ring and ato</td><td class={'hit' if top2_ok else 'miss'}>"
+                f"{'yes' if top2_ok else 'no'}</td><td>top two: {esc(', '.join(order[:2]))}</td></tr>"
+                f"<tr><td>weakest on template_operator</td><td class={'hit' if low_ok else 'miss'}>"
+                f"{'yes' if low_ok else 'no'}</td><td>weakest: {esc(order[-1])}</td></tr>"
+                "<tr><td>costs far more</td><td>untestable</td><td>no token counts in this pass</td></tr>"
+                "</table>"
+            )
     return "".join(out)
 
 
@@ -1051,9 +1083,10 @@ each detector's top-k (and a random sample, to estimate what is missed).</li>
 out-of-distribution; treat its scores as a demonstration. Retrain on your own labelled history.</li>
 <li><b>The rules are our priors, not your policy.</b> They were written by someone who knew exactly what
 was planted, which is an advantage no real rule writer has. Use them as a readable starting set.</li>
-<li><b>It says nothing about real LLM quality.</b> Every LLM number in this report is a placeholder from a
-mock that hashes its prompt. Running the optional real-model pass gives you a measurement on this
-synthetic data, which still says little about your data.</li>
+<li><b>It says little about real LLM quality.</b> Every <code>llm:mock</code> number is a placeholder from
+a mock that hashes its prompt. A real-model or subagent pass, where the report shows one, is a
+measurement on this synthetic data, whose abuse patterns were written from textbook mechanisms;
+it still says little about your data.</li>
 <li><b>The costs are placeholders.</b> Token counts are approximate and prices come from a config file
 with made-up values. Plug in your provider's price sheet and your own volumes.</li>
 <li><b>What it can tell you:</b> whether your event export fits a simple, documented schema; what the
@@ -1101,7 +1134,7 @@ def build_report(
             _cost(primary, bundles),
             _expected(prereg, primary, s1, null, pf, extra),
             _replication(prereg, reps, primary, pf),
-            _bundles(bundles, {}),
+            _bundles(bundles, primary),
             CANT_TELL,
         ]
     )
