@@ -364,3 +364,29 @@ Dev check result (dev seed 101, run once after writing the code, before any eval
 alone, template vs benign, base 0.038), ROC-AUC / PR-AUC, v2 then v3: standard s = 0: 0.504 /
 0.040, 0.490 / 0.039; standard s = 0.5: 0.848 / 0.442, 0.802 / 0.556; cross_only: 0.511 / 0.040,
 0.732 / 0.253; ordinary: 0.447 / 0.032, 0.883 / 0.635. No setting was changed after it.
+
+### 2026-11-03 (later) — confirmation of similarity v3 on fresh seeds 9004–9006
+
+Requested by the owner (PROGRESS.md Q8). v3 was designed after seeing the result it targets and
+tested on seed 9001, which had been run seven times. This confirmation uses seeds **9004, 9005 and
+9006**, which nothing in this repository has generated or evaluated before (checked with a search
+of the code and notes). Declared before writing the runner and before any run on these seeds.
+
+- **Frozen:** every detector, feature (v1, v2, v3), model setting, split, interval method and
+  generator mode exactly as at commit `f747e3b`. No change of any kind after the first run on a
+  confirmation seed; if a bug is found, it is reported, not fixed and re-run.
+- **Runs per seed** (1,000 bootstrap samples each): standard s = 0 (null control), standard
+  s = 0.5, ordinary mode s = 0.5. Run by a separate `make confirm` (keeps `make demo` under its
+  10-minute limit); the report adds a section when the results exist.
+- **Confirmation criterion (primary, decided now):** v3 is confirmed only if, in the ordinary
+  mode on template_operator in-family, `gb+sim3` beats `gb` by at least 0.10 PR-AUC on **each** of
+  the three seeds. Anything less is reported as "not confirmed", with the numbers.
+- Secondary expectations: (b) on each seed, `gb+sim3` beats `gb+sim2` in the ordinary mode,
+  in-family; (c) held out, the gain of `gb+sim3` over `gb` is below 0.05 on each seed (no training
+  family teaches the model to use v3); (d) null control on each seed: no Bonferroni-corrected
+  interval excludes the base rate or 0.5; strict misses against the null PR-AUC are counted and
+  reported; (e) standard s = 0.5: `gb+sim3` no more than 0.02 below `gb` on each seed.
+
+```prereg-amendment
+confirmation_seeds: [9004, 9005, 9006]
+```
