@@ -440,3 +440,26 @@ on these seeds.
 ```prereg-amendment
 confirmation_large: {seeds: [9007, 9008, 9009], n_accounts: 20000}
 ```
+
+### 2026-11-03 (late) — is the few-cluster widening too narrow at 20,000 accounts? (dev seeds only)
+
+Requested by the owner (PROGRESS.md Q11) after the confirmation null controls gave 2/132 (9006),
+5/132 (9008) and 0/132 Bonferroni misses against the base rate. A look at those existing cells,
+before this was declared: 5 of the 7 contain their null PR-AUC (for a continuous score the null
+PR-AUC is above the base rate, 0.0134 vs 0.0122 for example), and 2 exclude it barely (9008
+`lr+sim`, `lr+sim3` on scraping heldout_2: lower bounds 0.0135 and 0.0140 vs 0.0134). Also found:
+the confirmation sections' "strict misses" counted only cells that passed the base-rate test, so
+they showed 0 where 2 cells excluded the null PR-AUC; the label is corrected to count every such
+cell. No eval or confirmation seed is used below, and nothing changes in the method in this step.
+
+- Runs: standard mode, s = 0, 1,000 bootstrap samples, dev seeds 101, 102, 103, each at 20,000
+  accounts and, for comparison, at 5,000.
+- Measured per run, over all 132 cells: Bonferroni misses against the base rate, against the null
+  PR-AUC and of ROC-AUC against 0.5; and the uncorrected 95% miss rate against the right null
+  (null PR-AUC for PR-AUC, 0.5 for ROC-AUC), which should be about 5% if the intervals are
+  calibrated (cells share test accounts, so it varies a lot between seeds).
+- **Decision rule, fixed now:** pooled over the three dev seeds at 20,000 accounts, if the
+  uncorrected 95% miss rate against the right null is at most 7.5% for both PR-AUC and ROC-AUC,
+  the widening is judged adequate at ~50 groups and the misses are put down to the base-rate
+  reference plus chance. If it is above 7.5% for either, the intervals are judged too narrow at
+  that size; that is reported with a proposed fix for the owner to approve, and not applied here.
