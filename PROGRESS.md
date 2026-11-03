@@ -24,6 +24,10 @@
   Dev 101 ordinary, feature alone PR: v2 0.032, v3 0.635. Eval 9001 ordinary in-family: gb+sim3 0.607
   vs gb 0.010 (a, b hit); held-out no gain; standard s=0.5 +0.038 (d hit); null 1/132 strict miss
   (lr+sim3 card_testing, CI just below null PR-AUC) -> (c) MISS. Seventh eval-seed run, disclosed.
+- [x] 16 Frozen v3 confirmation, fresh seeds 9004-9006 (`make confirm`, commit b524623, 13m08s).
+  NOT CONFIRMED: ordinary in-family gain +0.504 / +0.055 / +0.691 (9005 < 0.10). (b), (c), (e) hit.
+  (d) MISS: seed 9006 null 2/132 Bonferroni misses (gb, gb+sim on scraping in-family; borderline,
+  pre-registered detectors). Nothing fixed or re-run, per the amendment.
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
@@ -63,8 +67,9 @@
   Diagnosis (dev 101, post-run): sim2 alone ROC 0.447; best crew-mate Jaccard 0.032 < best benign 0.042,
   because one ~10-event replay is diluted by ~100 benign tokens.
 - Q7 answered (v3): done. Finds ordinary-script crews in-family (0.607), not held out.
-- Q8 v3 rests on 7 test groups and was designed after the result it targets. Confirm on fresh eval
-  seeds (e.g. 9004-9006, never used) with the design frozen, rather than re-running 9001?
+- Q8 answered (confirm on 9004-9006): done, v3 not confirmed (one seed of three below +0.10).
+- Q9 Seed 9005: the oracle reaches 0.708, but gb+sim3 only 0.099. Diagnose why (on 9005 only as a
+  dev seed from now on) or stop here and leave v3 as "helps often, not confirmed"?
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
