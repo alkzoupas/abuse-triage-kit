@@ -390,3 +390,20 @@ of the code and notes). Declared before writing the runner and before any run on
 ```prereg-amendment
 confirmation_seeds: [9004, 9005, 9006]
 ```
+
+### 2026-11-03 (night) — diagnosis of the v3 miss on seed 9005 (no change to anything)
+
+Requested by the owner (PROGRESS.md Q9). From now on seed 9005 counts as a dev seed; it will not
+be used to confirm anything. Diagnosis only, on 9004–9006 ordinary mode: nothing was changed and
+nothing re-run, and the confirmation verdict ("not confirmed") stands.
+
+- Benign accounts share about 1.8 rare view pairs with their closest neighbour (v3 median 0.98,
+  99th percentile 1.39); search queries contribute none. That is v3's noise floor.
+- v3's value rises with the crew's script length (Spearman 0.68–0.77 on each seed). v3 alone, ROC-
+  AUC against benign: scripts with ≥ 9 views 0.963 / 0.956 / 0.934, scripts with ≤ 6 views 0.658 /
+  0.651 / 0.638 (seeds 9004 / 9005 / 9006). The relationship is the same on every seed.
+- Seed 9005 drew shorter scripts (median 7 views, vs 11 and 9), and its 11 in-family test groups
+  were mostly short, so their v3 values (1.1–1.47) sit inside the benign range. In its train split
+  v3 alone reached PR-AUC 0.449, in test 0.102.
+- Reading: v3's miss is a property of the feature (a noise floor of about two shared pairs) meeting
+  the generator's spread of script lengths, judged on about 11 test groups per seed.

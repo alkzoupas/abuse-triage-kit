@@ -128,6 +128,11 @@ below). Synthetic data only.
   sets, but not reliably enough to pass the bar set for it. Seed 9006's null control also had
   2 Bonferroni misses of 132, both in pre-registered detectors (`gb`, `gb+sim` on scraping
   in-family; lower bounds 0.0132 and 0.0142 vs base rate 0.0130), unrelated to v3 but reported.
+- **Why v3 missed on seed 9005: it only works on long scripts.** A diagnosis after the
+  verdict (nothing changed or re-run) finds that ordinary accounts already share about two rare
+  view pairs with their closest neighbour, and v3's value grows with the crew's script length.
+  On v3 alone, ROC-AUC is 0.93–0.96 for scripts of at least 9 views and 0.64–0.66 for scripts
+  of at most 6, on every seed. Seed 9005 drew shorter scripts (median 7 views, vs 11 and 9).
 - **Expected vs actual:** 8 of 12 pre-registered winner calls hit with the pre-registered
   intervals, 7 of 12 with the widened ones (review_ring in-family becomes a tie). Misses are
   listed in the report.

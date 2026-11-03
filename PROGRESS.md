@@ -68,8 +68,12 @@
   because one ~10-event replay is diluted by ~100 benign tokens.
 - Q7 answered (v3): done. Finds ordinary-script crews in-family (0.607), not held out.
 - Q8 answered (confirm on 9004-9006): done, v3 not confirmed (one seed of three below +0.10).
-- Q9 Seed 9005: the oracle reaches 0.708, but gb+sim3 only 0.099. Diagnose why (on 9005 only as a
-  dev seed from now on) or stop here and leave v3 as "helps often, not confirmed"?
+- Q9 answered (diagnose 9005, now a dev seed): v3 tracks script length (Spearman 0.68-0.77); scripts
+  >= 9 views ROC 0.93-0.96, <= 6 views 0.64-0.66, same on all three seeds. 9005 drew short scripts
+  (median 7 views). Benign noise floor ~1.8 shared rare view pairs; queries contribute nothing.
+- Q10 Options, none done: (1) a v4 that weights shared pairs by rarity or uses ordered triples, to lower
+  the noise floor (needs new fresh seeds to confirm); (2) a confirmation with more template groups per
+  seed so ~11 test groups don't decide it; (3) stop, with v3 recorded as "helps on long scripts".
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
