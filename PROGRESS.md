@@ -37,6 +37,10 @@
   0 Bonferroni misses on all three dev seeds at 20k. Confirmation-seed misses: 5 of 7 contain their
   null PR-AUC (base-rate reference artefact), 2 marginal. Also fixed: confirmation sections' count of
   cells excluding the null PR-AUC (was strict-only, showed 0 where it was 2).
+- [x] 19 Null control's primary PR-AUC reference is now the null PR-AUC (owner-approved, amendment);
+  pre-registered base-rate test kept, shown, and still scores H1 and the confirmations' (d). Re-scored
+  existing null runs, primary / pre-registered fails: 9001 1/0 (lr+sim3 card_testing, below chance),
+  9004 0/0, 9005 0/0, 9006 0/2, 9007 0/0, 9008 2/5, 9009 0/0.
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
@@ -82,10 +86,8 @@
   (median 7 views). Benign noise floor ~1.8 shared rare view pairs; queries contribute nothing.
 - Q10 answered (option 2, more template groups): done, v3 confirmed at 20,000 accounts per seed.
 - Q11 answered (check widening on dev seeds at 20k): widening adequate, see story 18.
-- Q12 Proposal, not applied: make the null PR-AUC (not the base rate) the primary PR-AUC reference
-  in the null control, since for continuous scores the base rate sits below what chance gives. That
-  changes a pre-registered acceptance test, so it would be a dated amendment applied to future runs
-  only, with past verdicts kept as they were. Do it?
+- Q12 answered (switch to null PR-AUC): done, story 19. The primary eval seed now shows FAIL on one
+  below-chance cell; reported as is.
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
