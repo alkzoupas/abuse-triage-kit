@@ -238,50 +238,95 @@ channel</th><th>abuse test accounts</th><th>test groups</th></tr>{"".join(rows)}
 """
 
 
+def _null_ref(c: dict[str, Any]) -> float:
+    """Primary null-control PR-AUC reference (amendment 2026-11-03): the null PR-AUC, or the
+    base rate for a degenerate cell (where the two coincide by construction)."""
+    return float(
+        c["base_rate"] if c.get("degenerate", False) else c.get("ap_random", c["base_rate"])
+    )
+
+
+def _inside(iv: list[float], x: float) -> bool:
+    return bool(iv[0] <= x <= iv[1])
+
+
+def null_failures(cells: list[dict[str, Any]], reference: str = "null") -> list[dict[str, Any]]:
+    """Cells failing the null control. reference="null": primary test (null PR-AUC);
+    "base": the pre-registered test (base rate). ROC-AUC against 0.5 in both."""
+    out = []
+    for c in cells:
+        ref = _null_ref(c) if reference == "null" else float(c["base_rate"])
+        if not _inside(c["ap_ci_bonf"], ref) or not _inside(c["roc_ci_bonf"], 0.5):
+            out.append(c)
+    return out
+
+
 def _null(null: dict[str, Any]) -> str:
     cells = null["cells"]
-    bad = [
-        c
-        for c in cells
-        if not (c["ap_ci_bonf"][0] <= c["base_rate"] <= c["ap_ci_bonf"][1])
-        or not (c["roc_ci_bonf"][0] <= 0.5 <= c["roc_ci_bonf"][1])
-    ]
-    unc = sum(not (c["ap_ci95"][0] <= c["base_rate"] <= c["ap_ci95"][1]) for c in cells)
+    bad = null_failures(cells, "null")
+    bad_base = null_failures(cells, "base")
+    unc = sum(not _inside(c["ap_ci95"], _null_ref(c)) for c in cells)
+    unc_base = sum(not _inside(c["ap_ci95"], c["base_rate"]) for c in cells)
     rows = []
     for det in (*DETS_SHOWN, "oracle"):
         cs = [c for c in cells if c["detector"] == det]
-        worst = max(cs, key=lambda c: abs(c["ap"] - c["base_rate"]))
+        worst = max(cs, key=lambda c: abs(c["ap"] - _null_ref(c)))
         rows.append(
             f"<tr><td>{esc(det)}</td><td class=n>{len(cs)}</td>"
-            f"<td class=n>{num(worst['ap'] - worst['base_rate'], det)}</td>"
+            f"<td class=n>{num(worst['ap'] - _null_ref(worst), det)}</td>"
             f"<td class=n>{num(min(c['roc'] for c in cs), det)} – {num(max(c['roc'] for c in cs), det)}</td>"
-            f"<td class=n>{sum(c in bad for c in cs)}</td></tr>"
+            f"<td class=n>{sum(c in bad for c in cs)}</td><td class=n>{sum(c in bad_base for c in cs)}</td></tr>"
         )
     verdict = (
-        '<p class="hit">Pass: no cell\'s corrected interval excludes the base rate (PR-AUC) or 0.5 (ROC-AUC).</p>'
+        '<p class="hit">Pass: no cell\'s corrected interval excludes its null PR-AUC (PR-AUC) or 0.5 (ROC-AUC).</p>'
         if not bad
         else f'<p class="miss">FAIL: {len(bad)} cells exclude the null. Treat every result below as suspect.</p>'
+        + "<ul>"
+        + "".join(
+            f"<li><code>{esc(c['detector'])}</code>, {esc(c['family'])}, {esc(c['split'])}: PR-AUC "
+            f"{c['ap']:.4f}, corrected interval [{c['ap_ci_bonf'][0]:.4f}, {c['ap_ci_bonf'][1]:.4f}] vs "
+            f"null PR-AUC {_null_ref(c):.4f} "
+            + (
+                "(<b>below</b> chance)"
+                if c["ap_ci_bonf"][1] < _null_ref(c)
+                else "(above chance)"
+                if c["ap_ci_bonf"][0] > _null_ref(c)
+                else "(PR-AUC inside)"
+            )
+            + f"; ROC-AUC interval [{c['roc_ci_bonf'][0]:.3f}, {c['roc_ci_bonf'][1]:.3f}]</li>"
+            for c in bad
+        )
+        + "</ul>"
+    )
+    pre = (
+        "also passes"
+        if not bad_base
+        else f"has {len(bad_base)} failing cell{'s' if len(bad_base) != 1 else ''}"
     )
     return f"""
 <h2>Null control</h2>
 <p>At <code>s = 0</code> there is nothing to find. All {null["n_cells"]} detector × family × split cells
 (oracle included) are treated as one family of tests with a Bonferroni-corrected interval
-(alpha = 0.05 / {null["n_cells"]} = {null["alpha_bonferroni"]:.5f}).</p>
+(alpha = 0.05 / {null["n_cells"]} = {null["alpha_bonferroni"]:.5f}). Each PR-AUC is compared with its
+<b>null PR-AUC</b>, the expected PR-AUC if labels were assigned at random given that detector's ties;
+each ROC-AUC with 0.5.</p>
 {verdict}
-<p class="sub">For scale: {unc} of {len(cells)} <i>uncorrected</i> 95% PR-AUC intervals exclude the base
-rate, versus about {len(cells) * 0.05:.0f} expected by chance if cells were independent (they are
-not: cells share test accounts). This is why the correction is not optional.</p>
-<p class="sub">Two post-hoc refinements (dated in PREREGISTRATION.md, AMENDMENTS): every interval is
-widened for the number of resampled units in the scarcer class (a t-based expansion that matters
-most for coordinated families with ~10 groups), and each PR-AUC is also compared with its exact
-<b>null PR-AUC</b>, the expected PR-AUC if labels were assigned at random given that detector's
-ties. For a continuous score with few positives the null PR-AUC sits above the base rate.
-{sum(c.get("degenerate", False) for c in cells)} cells are <b>degenerate</b> (no abuse account scored
-above the lowest score, so PR-AUC equals the base rate and cannot vary); they are no-signal cells by
-construction. Non-degenerate cells whose corrected interval excludes the null PR-AUC:
-{sum((not c.get("degenerate", False)) and not (c["ap_ci_bonf"][0] <= c.get("ap_random", c["base_rate"]) <= c["ap_ci_bonf"][1]) for c in cells)}.</p>
-<table><tr><th>detector</th><th>cells</th><th>largest |PR-AUC − base rate|</th><th>ROC-AUC range</th>
-<th>cells failing</th></tr>{"".join(rows)}</table>
+<p class="sub"><b>Reference changed after the fact</b> (PREREGISTRATION.md, AMENDMENTS, 2026-11-03,
+owner-approved): the pre-registered test compared PR-AUC with the <i>base rate</i>. For a continuous
+score with few positives the null PR-AUC sits above the base rate, so a tight interval can exclude
+the base rate while behaving exactly as chance predicts. The pre-registered base-rate test, shown in
+the last column, {pre}; H1 below is still scored by it.</p>
+<p class="sub">For scale: {unc} of {len(cells)} <i>uncorrected</i> 95% PR-AUC intervals exclude their
+null PR-AUC ({unc_base} exclude the base rate), versus about {len(cells) * 0.05:.0f} expected by chance
+if cells were independent (they are not: cells share test accounts). This is why the correction is
+not optional.</p>
+<p class="sub">Every interval is widened for the number of resampled units in the scarcer class
+(a t-based expansion that matters most for coordinated families with ~10 groups; a later dev-seed
+check found it calibrated at ~50 groups). {sum(c.get("degenerate", False) for c in cells)} cells are
+<b>degenerate</b> (no abuse account scored above the lowest score, so PR-AUC equals the base rate and
+cannot vary); they are no-signal cells by construction.</p>
+<table><tr><th>detector</th><th>cells</th><th>largest |PR-AUC − null PR-AUC|</th><th>ROC-AUC range</th>
+<th>cells failing</th><th>failing, pre-registered base-rate test</th></tr>{"".join(rows)}</table>
 """
 
 
@@ -885,7 +930,21 @@ def _expected(
         and c["roc_ci_bonf"][0] <= 0.5 <= c["roc_ci_bonf"][1]
         for c in null["cells"]
     )
-    hyp.append(("H1 null control holds", null_ok, f"{null['n_cells']} cells, Bonferroni"))
+    hyp.append(
+        (
+            "H1 null control holds (as pre-registered: PR-AUC vs base rate)",
+            null_ok,
+            f"{null['n_cells']} cells, Bonferroni",
+        )
+    )
+    n_bad = len(null_failures(null["cells"], "null"))
+    hyp.append(
+        (
+            "Null control, primary test since 2026-11-03 (PR-AUC vs null PR-AUC; amendment)",
+            n_bad == 0,
+            f"{n_bad} of {null['n_cells']} cells fail",
+        )
+    )
     orc = [cell(s1, "in_family", f, "oracle")["ap"] for f in FAMILIES]
     hyp.append(
         ("H2 oracle PR-AUC ≥ 0.9 on every family at s = 1", min(orc) >= 0.9, f"min {min(orc):.3f}")
