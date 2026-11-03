@@ -1,0 +1,84 @@
+# Hand-written abuse rules. Readable without code:
+#   id      short name shown in rationales
+#   family  which abuse pattern the rule targets (a rule is active only when the
+#           evaluation split says that family is "seen")
+#   says    the rule in plain words
+#   if      a condition on one account feature (see features.py for the list),
+#           or "all:" a list of conditions that must all hold.
+#           Comparisons: at_least, at_most, is_true
+#   weight  how much one firing raises the score (0-1).
+#           Score = 1 - product(1 - weight) over the rules that fire.
+#
+# These encode HUMAN PRIORS written from each pattern's description. They were not
+# fitted to data.
+rules:
+  - id: failed_login_burst
+    family: ato
+    says: "8 or more failed logins within one hour"
+    if: {feature: max_login_fail_1h, at_least: 8}
+    weight: 0.7
+  - id: new_device_then_account_change
+    family: ato
+    says: "Login from a new device followed within an hour by a profile or payout change"
+    if: {feature: new_device_then_account_change, is_true: true}
+    weight: 0.7
+
+  - id: reviews_without_purchase
+    family: review_ring
+    says: "2 or more reviews of items the account never bought"
+    if: {feature: reviews_without_purchase, at_least: 2}
+    weight: 0.6
+  - id: short_five_star_reviews
+    family: review_ring
+    says: "Several reviews, all five stars, all very short"
+    if:
+      all:
+        - {feature: n_review, at_least: 2}
+        - {feature: share_5star, at_least: 1.0}
+        - {feature: mean_review_words, at_most: 6}
+    weight: 0.4
+
+  - id: disposable_email
+    family: promo_abuse
+    says: "Email domain looks like a throwaway provider"
+    if: {feature: email_disposable_hint, is_true: true}
+    weight: 0.4
+  - id: promo_codes_at_signup
+    family: promo_abuse
+    says: "2 or more promo codes redeemed within an hour of signup"
+    if: {feature: promo_first_hour, at_least: 2}
+    weight: 0.6
+
+  - id: page_velocity
+    family: scraping
+    says: "60 or more listing views within 10 minutes"
+    if: {feature: max_views_10min, at_least: 60}
+    weight: 0.8
+  - id: browse_never_buy
+    family: scraping
+    says: "200 or more listing views and no purchase"
+    if:
+      all:
+        - {feature: n_view, at_least: 200}
+        - {feature: n_purchase, at_most: 0}
+    weight: 0.4
+
+  - id: declined_payment_burst
+    family: card_testing
+    says: "4 or more declined payments within one hour"
+    if: {feature: max_failed_payments_1h, at_least: 4}
+    weight: 0.8
+  - id: many_declines
+    family: card_testing
+    says: "6 or more declined payments in total"
+    if: {feature: n_failed_payments, at_least: 6}
+    weight: 0.4
+
+  - id: machine_steady_pace
+    family: template_operator
+    says: "At least 20 events with unusually regular timing between actions"
+    if:
+      all:
+        - {feature: n_events, at_least: 20}
+        - {feature: gap_cv, at_most: 0.6}
+    weight: 0.4

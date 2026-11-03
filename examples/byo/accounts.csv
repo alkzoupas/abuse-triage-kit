@@ -1,0 +1,13 @@
+account_id,created_at,country,email_domain
+0fb511832763,1768125416,NL,mail.example
+59324c9e8ae8,1767989860,US,webmail.example
+64d3d0c82af9,1769808701,US,post.example
+67f4e865a230,1769734029,GB,mail.example
+6aa85c59a4a9,1768964209,DE,mail.example
+7b49546a0e57,1770249290,DE,webmail.example
+a1a3c86b46a9,1768546138,PL,uni.example
+a931020c77d1,1770900853,FR,inbox.example
+ae4b8cef4fc4,1769537334,DE,post.example
+c1bde829ed7f,1769288200,GB,tempbox.example
+ca4eeb95e48b,1767287435,PL,mail.example
+d34619b84adb,1767675800,DE,webmail.example

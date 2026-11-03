@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "event.schema.json",
+  "title": "Event",
+  "description": "One timestamped account action. ts is integer Unix seconds (UTC). Optional fields are null when not applicable.",
+  "type": "object",
+  "required": [
+    "account_id",
+    "ts",
+    "type",
+    "ip",
+    "device_id"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "account_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ts": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "type": {
+      "enum": [
+        "login",
+        "login_fail",
+        "view",
+        "search",
+        "payment_attempt",
+        "purchase",
+        "review",
+        "listing_create",
+        "promo_redeem",
+        "profile_update",
+        "payout_change"
+      ]
+    },
+    "ip": {
+      "type": "string",
+      "minLength": 1
+    },
+    "device_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "listing id, promo code, etc."
+    },
+    "amount": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "payment/purchase amount or listing price"
+    },
+    "success": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "rating": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 5
+    },
+    "text": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "review text, listing description or search query"
+    }
+  }
+}
