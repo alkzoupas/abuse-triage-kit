@@ -1,6 +1,6 @@
 PY ?= $(shell [ -x .venv/bin/python ] && echo .venv/bin/python || echo python)
 
-.PHONY: test lint typecheck demo check
+.PHONY: test lint typecheck demo confirm check
 
 test:
 	$(PY) -m pytest
@@ -16,3 +16,6 @@ check: lint typecheck test
 
 demo:
 	$(PY) -m triage_kit.demo
+
+confirm:
+	$(PY) -m triage_kit.confirm

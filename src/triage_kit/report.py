@@ -66,6 +66,7 @@ def load_prereg(path: Path) -> dict[str, Any]:
     out.setdefault("extra_s", [])
     out.setdefault("cross_only_runs", [])
     out.setdefault("ordinary_runs", [])
+    out.setdefault("confirmation_seeds", [])
     for am in re.finditer(r"```prereg-amendment\n(.*?)```", text, flags=re.DOTALL):
         out.update(yaml.safe_load(am.group(1)) or {})
     return out
@@ -663,6 +664,101 @@ on fresh data, not as a tested hypothesis.</p>
 """
 
 
+def _confirm(results_root: Path, prereg: dict[str, Any]) -> str:
+    """Frozen confirmation of similarity v3 on fresh seeds (amendment 2026-11-03, later)."""
+    seeds = [int(x) for x in prereg["confirmation_seeds"]]
+    if not seeds:
+        return ""
+    head = (
+        """
+<h2>Confirmation of similarity v3 on fresh seeds</h2>
+<p>Declared in PREREGISTRATION.md (AMENDMENTS, 2026-11-03 later) before any run on these seeds,
+with every detector, feature and setting frozen. Seeds """
+        + ", ".join(map(str, seeds))
+        + """ were
+never generated or evaluated before. <b>Criterion (decided in advance):</b> v3 is confirmed only if,
+in the ordinary-script mode on template_operator in-family, <code>gb+sim3</code> beats
+<code>gb</code> by at least 0.10 PR-AUC on each seed.</p>"""
+    )
+    s = float(prereg["primary_s"])
+    try:
+        runs = {
+            sd: (
+                load_run(results_root, sd, 0.0),
+                load_run(results_root, sd, s),
+                load_run(results_root, sd, s, mode="ordinary"),
+            )
+            for sd in seeds
+        }
+    except FileNotFoundError:
+        return head + "<p><b>Not run yet.</b> Run <code>make confirm</code>.</p>"
+    tf = "template_operator"
+    ho = heldout_split_of(tf)
+    dets = ("gb", "gb+sim2", "gb+sim3", "oracle")
+    rows = []
+    ok = {k: True for k in "abcde"}
+    det: dict[str, list[str]] = {k: [] for k in "abcde"}
+    for sd, (nul, std, od) in runs.items():
+        for label, run, split in (
+            ("ordinary", od, "in_family"),
+            ("ordinary", od, ho),
+            (f"standard s={s:g}", std, "in_family"),
+        ):
+            c = {d: cell(run, split, tf, d) for d in dets}
+            rows.append(
+                f"<tr><td class=n>{sd}</td><td>{esc(label)}</td><td>{esc(split)}</td>"
+                + "".join(
+                    f"<td class=n>{num(v['ap'], d, v.get('ap_ci95'))}</td>" for d, v in c.items()
+                )
+                + f"<td class=n>{c['gb+sim3']['ap'] - c['gb']['ap']:+.3f}</td>"
+                + f"<td class=n>{run['test_groups'].get(tf)}</td></tr>"
+            )
+        a = {d: cell(od, "in_family", tf, d)["ap"] for d in dets}
+        h = {d: cell(od, ho, tf, d)["ap"] for d in dets}
+        g = {d: cell(std, "in_family", tf, d)["ap"] for d in dets}
+        gain, gain_ho, gain_std = (
+            a["gb+sim3"] - a["gb"],
+            h["gb+sim3"] - h["gb"],
+            g["gb+sim3"] - g["gb"],
+        )
+        bonf = sum(
+            not (c["ap_ci_bonf"][0] <= c["base_rate"] <= c["ap_ci_bonf"][1])
+            or not (c["roc_ci_bonf"][0] <= 0.5 <= c["roc_ci_bonf"][1])
+            for c in nul["cells"]
+        )
+        strict = sum(_null_bad(c) for c in nul["cells"]) - bonf
+        for k, hit, txt in (
+            ("a", gain >= 0.10, f"{sd}: {gain:+.3f}"),
+            ("b", a["gb+sim3"] > a["gb+sim2"], f"{sd}: {a['gb+sim3']:.3f} vs {a['gb+sim2']:.3f}"),
+            ("c", gain_ho < 0.05, f"{sd}: {gain_ho:+.3f}"),
+            ("d", bonf == 0, f"{sd}: {bonf} of {nul['n_cells']} (strict misses: {strict})"),
+            ("e", gain_std >= -0.02, f"{sd}: {gain_std:+.3f}"),
+        ):
+            ok[k] = ok[k] and bool(hit)
+            det[k].append(txt)
+    names = {
+        "a": "PRIMARY: ordinary, in-family, gb+sim3 beats gb by at least 0.10 on each seed",
+        "b": "(b) ordinary, in-family: gb+sim3 beats gb+sim2 on each seed",
+        "c": "(c) held out: gain of gb+sim3 over gb below 0.05 on each seed",
+        "d": "(d) null control: no Bonferroni miss (base rate / 0.5) on each seed",
+        "e": "(e) standard: gb+sim3 no more than 0.02 below gb on each seed",
+    }
+    checks = [(names[k], ok[k], "; ".join(det[k])) for k in "abcde"]
+    verdict = (
+        '<p class="hit"><b>v3 confirmed</b> by the pre-declared criterion.</p>'
+        if ok["a"]
+        else '<p class="miss"><b>v3 not confirmed</b> by the pre-declared criterion.</p>'
+    )
+    return (
+        head
+        + verdict
+        + f"""<table><tr><th>seed</th><th>run</th><th>split</th>{"".join(f"<th>{esc(d)}</th>" for d in dets)}
+<th>gb+sim3 − gb</th><th>test groups</th></tr>{"".join(rows)}</table>
+<table><tr><th>declared expectation</th><th></th><th>detail</th></tr>{_check_rows(checks)}</table>
+"""
+    )
+
+
 def _budget(primary: dict[str, Any], k: int) -> str:
     rows = "".join(
         f"<tr><td>{esc(c['detector'])}</td><td class=n>{num(c['p_at_k'], c['detector'])}</td>"
@@ -888,6 +984,7 @@ def build_report(
             _cross_only(results_root, prereg, by_s),
             _ordinary(results_root, prereg),
             _sim3(results_root, prereg, by_s, null),
+            _confirm(results_root, prereg),
             _budget(primary, prereg["review_budget_k"]),
             _cost(primary, bundles),
             _expected(prereg, primary, s1, null, pf, extra),
