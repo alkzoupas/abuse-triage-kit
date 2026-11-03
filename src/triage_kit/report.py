@@ -769,12 +769,16 @@ each seed.</p>"""
             or not (c["roc_ci_bonf"][0] <= 0.5 <= c["roc_ci_bonf"][1])
             for c in nul["cells"]
         )
-        strict = sum(_null_bad(c) for c in nul["cells"]) - bonf
+        strict = sum(
+            (not c.get("degenerate", False))
+            and not (c["ap_ci_bonf"][0] <= c.get("ap_random", c["base_rate"]) <= c["ap_ci_bonf"][1])
+            for c in nul["cells"]
+        )
         res = [
             ("a", gain >= 0.10, f"{sd}: {gain:+.3f}"),
             ("b", a["gb+sim3"] > a["gb+sim2"], f"{sd}: {a['gb+sim3']:.3f} vs {a['gb+sim2']:.3f}"),
             ("c", gain_ho < 0.05, f"{sd}: {gain_ho:+.3f}"),
-            ("d", bonf == 0, f"{sd}: {bonf} of {nul['n_cells']} (strict misses: {strict})"),
+            ("d", bonf == 0, f"{sd}: {bonf} of {nul['n_cells']} (exclude null PR-AUC: {strict})"),
         ]
         if std is not None:
             g = {d: cell(std, "in_family", tf, d)["ap"] for d in dets}
