@@ -407,3 +407,36 @@ nothing re-run, and the confirmation verdict ("not confirmed") stands.
   v3 alone reached PR-AUC 0.449, in test 0.102.
 - Reading: v3's miss is a property of the feature (a noise floor of about two shared pairs) meeting
   the generator's spread of script lengths, judged on about 11 test groups per seed.
+
+### 2026-11-03 (night, later) — second confirmation of v3, with four times as many template groups
+
+Requested by the owner (PROGRESS.md Q10, option 2). The first confirmation was decided by about 11
+template test groups per seed, and the diagnosis showed v3's value depends on script length, so a
+few short-script groups could decide it. Declared before writing the runner and before any run
+on these seeds.
+
+- **Seeds 9007, 9008, 9009**, never generated or evaluated before (searched the code and notes).
+- **20,000 accounts per seed** instead of 5,000. The generator scales every family "per 5,000
+  accounts", so the population mix and base rates are unchanged and each seed has about 120
+  template groups (about 45 in the test split) instead of 30. Generator, detectors, features,
+  settings, splits and interval method frozen exactly as at commit `f747e3b`; no change after the
+  first run. A timing check on dev seed 101 at 20,000 accounts (generation and features only, no
+  detector scored, no metric seen) took 14 s and 79 s.
+- **Caveat, stated in advance:** v3's vocabulary cap is relative (0.2% of N, so 40 accounts here)
+  and its top-3 neighbours are drawn from four times as many accounts, so its noise floor may be
+  higher in a bigger population. This tests v3 as specified, in a bigger marketplace; it is not
+  only "the same test with more groups".
+- **Runs per seed** (1,000 bootstrap samples): standard s = 0 (null control) and ordinary mode
+  s = 0.5. Run by `make confirm-large`; the report adds a section when results exist.
+- **Criterion (primary, unchanged from the first confirmation):** v3 is confirmed only if, in the
+  ordinary mode on template_operator in-family, `gb+sim3` beats `gb` by at least 0.10 PR-AUC on
+  **each** of the three seeds.
+- Secondary expectations: (b) `gb+sim3` beats `gb+sim2` on each seed (ordinary, in-family);
+  (c) held out, the gain of `gb+sim3` over `gb` is below 0.05 on each seed; (d) null control on each
+  seed: no Bonferroni-corrected interval excludes the base rate or 0.5 (strict misses counted).
+- Whatever the outcome, the first confirmation's "not confirmed" stays on record; the report shows
+  both.
+
+```prereg-amendment
+confirmation_large: {seeds: [9007, 9008, 9009], n_accounts: 20000}
+```
