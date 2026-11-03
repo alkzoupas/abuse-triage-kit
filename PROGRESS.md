@@ -28,6 +28,10 @@
   NOT CONFIRMED: ordinary in-family gain +0.504 / +0.055 / +0.691 (9005 < 0.10). (b), (c), (e) hit.
   (d) MISS: seed 9006 null 2/132 Bonferroni misses (gb, gb+sim on scraping in-family; borderline,
   pre-registered detectors). Nothing fixed or re-run, per the amendment.
+- [x] 17 Second frozen v3 confirmation: seeds 9007-9009 at 20,000 accounts (~49 test template groups
+  each), `make confirm-large`, commit 6dfa5fd, 38m50s. CONFIRMED: gains +0.498 / +0.376 / +0.371.
+  (b), (c) hit. (d) MISS: seed 9008 null 5/132 Bonferroni misses (lr x4 variants on scraping
+  heldout_2, gb+sim2 on ato; all borderline, none template). Nothing fixed or re-run.
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
@@ -71,9 +75,10 @@
 - Q9 answered (diagnose 9005, now a dev seed): v3 tracks script length (Spearman 0.68-0.77); scripts
   >= 9 views ROC 0.93-0.96, <= 6 views 0.64-0.66, same on all three seeds. 9005 drew short scripts
   (median 7 views). Benign noise floor ~1.8 shared rare view pairs; queries contribute nothing.
-- Q10 Options, none done: (1) a v4 that weights shared pairs by rarity or uses ordered triples, to lower
-  the noise floor (needs new fresh seeds to confirm); (2) a confirmation with more template groups per
-  seed so ~11 test groups don't decide it; (3) stop, with v3 recorded as "helps on long scripts".
+- Q10 answered (option 2, more template groups): done, v3 confirmed at 20,000 accounts per seed.
+- Q11 Null control at 20,000 accounts: 5/132 borderline misses on one seed (0 on the other two), from
+  pre-registered and post-hoc models alike. Worth checking whether the few-cluster widening is too
+  narrow at ~50 groups, or accept as the expected rate across 3x132 correlated cells?
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
