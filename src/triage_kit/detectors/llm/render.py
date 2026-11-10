@@ -20,6 +20,15 @@ Answer with ONE JSON object and nothing else:
 "rationale": "<one or two sentences citing specific events>"}
 """
 
+# v2 names no abuse type (PREREGISTRATION.md, AMENDMENTS, 2026-11-09). v1 names the six planted
+# ones in paraphrase, so a reviewer using it has been told what to look for.
+_ANSWER = INSTRUCTIONS[INSTRUCTIONS.index("Answer with ONE JSON object") :]
+INSTRUCTIONS_V2 = (
+    "You review marketplace accounts. Read the account timeline below and judge whether this "
+    "account is abusing the marketplace and should be sent to a human investigator.\n\n" + _ANSWER
+)
+PROMPTS = {"v1": INSTRUCTIONS, "v2": INSTRUCTIONS_V2}
+
 
 def _fmt_ts(ts: int) -> str:
     return datetime.fromtimestamp(ts, tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
@@ -41,12 +50,14 @@ def _line(e: Event, prev_ts: int | None) -> str:
     return " ".join(parts)
 
 
-def render_prompt(ae: AccountEvents) -> str:
+def render_prompt(ae: AccountEvents, version: str = PROMPT_VERSION) -> str:
+    if version not in PROMPTS:
+        raise ValueError(f"unknown prompt version {version!r}")
     a = ae.account
     ev = list(ae.events)
     counts = Counter(e.type for e in ev)
     head = [
-        INSTRUCTIONS,
+        PROMPTS[version],
         "ACCOUNT",
         f"id={a.account_id} created={_fmt_ts(a.created_at)} country={a.country} "
         f"email_domain={a.email_domain}",
