@@ -588,6 +588,25 @@ were not. The README's reading of that pass is corrected with this story.
   (e) held out, review_ring has the smallest added recall of `llm:v2` among the six families (its
   evidence is cross-account and the reviewer sees one account at a time).
 
+Procedure change, 2026-11-11, to cut subscription usage. Written when replies existed for v1
+batches 00–32 and v2 batches 00–33 and before any reply was collected or scored. A wave of 40
+reviewers on 2026-11-10 used about 5.0M cache-write and 17.2M cache-read tokens and hit the usage
+limit; 15 of the 40 wrote no reply. Cause: the batch files are 200–270 KB, the owner's read guard
+rejects a whole-file read of that size, so each reviewer paged through its file over 6 to 12
+turns and its context was billed again on every turn. For the remaining batches (v1 33–40,
+v2 34–40):
+
+- The instruction to each subagent names fixed 500-line pages of its batch file and asks for all
+  page reads in one message, then the Write. The batch files, the prompts in them, the model
+  requested (`opus`), the batching and the two allowed tools are unchanged; the reviewer sees the
+  same text.
+- One pilot batch (v2 34) is run first and its token use measured from its transcript. Its reply
+  is kept if the procedure does not change afterwards.
+- Reviewers run in waves of 3. v2 (primary) is finished before v1; if v1 cannot be finished,
+  expectation (c) is reported as not scored.
+- Known difference: batches before and after this change were read in a different number of
+  turns. No reviewer is given a different model, prompt or set of accounts.
+
 ```prereg-amendment
 second_stage: {seed: 9001, s: 0.5, k: 50, stage1: gb+sim, primary_stage2: "llm:v2"}
 ```
