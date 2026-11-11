@@ -526,3 +526,87 @@ Procedure change before any scoring (same date): the batches are about 2.4M toke
 large to pass inline. Each subagent instead gets the path of its batch file and of its reply file,
 and is allowed exactly two tools: Read on its batch file and Write on its reply file. Its reply
 never passes through the orchestrating session. Everything else above is unchanged.
+
+### 2026-11-09 — second-stage recall: what does an LLM reviewer add after the feature model? (exploratory)
+
+Requested by the owner. The question the kit was built around is whether an LLM reviewer, placed
+after a classical model, recovers abuse the model let through. Nothing so far measures that: every
+run ranks detectors side by side on all test accounts. Declared before writing the code and before
+any account is scored for it. Exploratory, not a pre-registered hypothesis.
+
+Found in review, and the reason for the second prompt below: the reviewer prompt v1 names the six
+planted abuse types in paraphrase ("hijacked accounts, fake reviews, promotion farming, bulk
+content harvesting, testing stolen payment cards, scripted or automated operation"). So the
+2026-11-03 subagent pass was not a reviewer that "needs no training data" facing an unseen
+family: it was told what to look for, while the held-out feature model and the switched-off rules
+were not. The README's reading of that pass is corrected with this story.
+
+- **Data:** eval seed 9001, s = 0.5, standard mode, the same 1,922 test accounts. No detector,
+  feature, model setting, split or generator setting changes. This is a further use of seed 9001.
+- **Stage 1:** `gb+sim` (the pre-registered primary feature model). In each cell (family ×
+  condition; pool = benign test accounts + that family's test accounts) it flags its top k = 50,
+  the pre-registered review budget. Conditions: `in_family`, and held out (the fold that hides the
+  family). Stage-1 ties are split evenly (see the tie rule).
+- **Stage 2** sees only the accounts stage 1 did not flag and flags its own top 50 of them.
+  Second stages compared, all on the same allowed accounts:
+  - `llm:v2`, **primary**: a new generic reviewer prompt (prompt version v2) that names no abuse
+    type: "You review marketplace accounts. Read the account timeline below and judge whether this
+    account is abusing the marketplace and should be sent to a human investigator." Same output
+    format and same rendered timeline as v1.
+  - `llm:v1`: the existing prompt, which names the six types (the prompt-cue comparison).
+  - `rules:all`: the hand-written rules with every rule on, whatever the fold (human priors
+    written knowing the mechanisms, like the v1 prompt).
+  - `more-stage-1`: `gb+sim` itself, i.e. simply giving the first stage 50 more flags.
+  - `random`: 50 of the allowed accounts at random (exact expectation, no sampling).
+- **Metric:** added recall = family accounts caught by stage 2 / all family test accounts in the
+  cell. Also reported: stage-1 recall at 50 (so headroom = 1 − that), and stage-2 precision.
+- **Tie rule:** a block of tied scores that straddles the budget is taken fractionally (the
+  expected value under random tie-breaking), for every stage and every scorer.
+- **Intervals:** 1,000-sample stratified cluster bootstrap as elsewhere (abuse units and benign
+  accounts resampled separately; the whole two-stage procedure is recomputed per replicate with
+  the resampling weights), percentile 95%, each side widened by the few-cluster factor of the
+  2026-11-02 amendment (without clipping, since differences can be negative).
+- **Reviewer:** Claude Code subagents as in the 2026-11-03 amendment: fresh `general-purpose`
+  subagents, model requested `opus` (the reported model is recorded), same batching (about 48
+  accounts, fixed shuffle seed, group members in different batches), each allowed only Read on its
+  batch file and Write on its reply file. One pass per prompt, 41 batches each. The 2026-11-03
+  pass's per-account scores were not kept (results are not committed and were made in a cloud
+  environment), so v1 is run again; its per-family PR-AUC is reported next to the earlier figures
+  as a repeatability check. The earlier caveats all apply (batched review, Claude Code system
+  prompt, no token counts so no cost, one seed, generator written by a Claude model).
+- **Criterion (primary, decided now with the owner):** held out, the added recall of `llm:v2`
+  exceeds that of `random`, with the 95% interval of the difference above 0, in at least 4 of the
+  6 families. Anything less is reported as a miss.
+- **Expectations (exploratory):**
+  (a) the criterion above holds;
+  (b) in-family, `llm:v2` adds less than 0.10 recall in at least 4 of 6 families (the first stage
+  has already caught most of what it was trained on);
+  (c) held out, `llm:v1` adds at least as much as `llm:v2` in at least 4 of 6 families (naming the
+  abuse types helps);
+  (d) held out, `llm:v2` adds more than `more-stage-1` in at least 4 of 6 families (a second
+  opinion beats a bigger budget for the same model);
+  (e) held out, review_ring has the smallest added recall of `llm:v2` among the six families (its
+  evidence is cross-account and the reviewer sees one account at a time).
+
+Procedure change, 2026-11-11, to cut subscription usage. Written when replies existed for v1
+batches 00–32 and v2 batches 00–33 and before any reply was collected or scored. A wave of 40
+reviewers on 2026-11-10 used about 5.0M cache-write and 17.2M cache-read tokens and hit the usage
+limit; 15 of the 40 wrote no reply. Cause: the batch files are 200–270 KB, the owner's read guard
+rejects a whole-file read of that size, so each reviewer paged through its file over 6 to 12
+turns and its context was billed again on every turn. For the remaining batches (v1 33–40,
+v2 34–40):
+
+- The instruction to each subagent names fixed 500-line pages of its batch file and asks for all
+  page reads in one message, then the Write. The batch files, the prompts in them, the model
+  requested (`opus`), the batching and the two allowed tools are unchanged; the reviewer sees the
+  same text.
+- One pilot batch (v2 34) is run first and its token use measured from its transcript. Its reply
+  is kept if the procedure does not change afterwards.
+- Reviewers run in waves of 3. v2 (primary) is finished before v1; if v1 cannot be finished,
+  expectation (c) is reported as not scored.
+- Known difference: batches before and after this change were read in a different number of
+  turns. No reviewer is given a different model, prompt or set of accounts.
+
+```prereg-amendment
+second_stage: {seed: 9001, s: 0.5, k: 50, stage1: gb+sim, primary_stage2: "llm:v2"}
+```

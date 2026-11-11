@@ -1097,6 +1097,106 @@ control, held-out families and confidence intervals), which you can repeat once 
 """
 
 
+def _second_stage(d: dict[str, Any] | None) -> str:
+    """Second-stage recall (PREREGISTRATION.md, AMENDMENTS, 2026-11-09). Empty without results."""
+    if not d:
+        return ""
+    k, s1 = d["k"], d["stage1"]
+    by = {(c["condition"], c["family"]): c for c in d["cells"]}
+    fams = [c["family"] for c in d["cells"] if c["condition"] == "heldout"]
+    order = ("llm:v2", "llm:v1", "rules:all", "more-stage-1", "random")
+    present = [n for n in order if all(n in c["stage2"] for c in d["cells"])]
+    out = [
+        "<h2>Second stage: what the LLM adds after the feature model</h2>",
+        '<p class="banner"><b>Exploratory.</b> Declared on 2026-11-09, before scoring. The reviewer '
+        "is Claude Code subagents, not an API pass (batched review, no token counts, one seed), "
+        "and the synthetic families were written by a Claude model.</p>",
+        f"<p>Stage 1 is <code>{esc(s1)}</code> flagging its top {k} accounts in each cell. Each "
+        f"second stage sees only what stage 1 allowed and flags {k} more. <b>Added recall</b> is the "
+        "share of the family's test accounts that the second stage catches. <code>llm:v2</code> is a "
+        "generic prompt that names no abuse type (primary); <code>llm:v1</code> names the six planted "
+        "types; <code>rules:all</code> is every hand-written rule; <code>more-stage-1</code> gives "
+        f"the first stage {k} more flags; <code>random</code> is {k} of the allowed accounts at random. "
+        f"Model <code>{esc(d.get('model', ''))}</code>. Intervals are 95%, widened for few groups.</p>",
+    ]
+    for cond, title in (("heldout", "Held out"), ("in_family", "In-family")):
+        why = "has never seen" if cond == "heldout" else "was trained on"
+        out.append(
+            f"<h3>{title}: stage 1 {why} the family</h3><table><tr><th>family</th>"
+            f"<th>abuse accounts</th><th>stage-1 recall at {k}</th>"
+            + "".join(f"<th>+ {esc(n)}</th>" for n in present)
+            + "<th>llm:v2 minus random</th></tr>"
+        )
+        for f in fams:
+            c = by[(cond, f)]
+            v2 = c["stage2"].get("llm:v2", {})
+            cells = "".join(
+                f"<td class=n>{num(c['stage2'][n]['added_recall'], '', c['stage2'][n]['added_recall_ci95'] if n.startswith('llm') else None)}</td>"
+                for n in present
+            )
+            diff = num(v2.get("diff_vs_random"), "", v2.get("diff_vs_random_ci95")) if v2 else "—"
+            out.append(
+                f"<tr><td>{esc(f)}</td><td class=n>{c['n_pos']}</td>"
+                f"<td class=n>{f3(c['stage1_recall'])}</td>{cells}<td class=n>{diff}</td></tr>"
+            )
+        out.append("</table>")
+    if "llm:v2" not in present:
+        out.append("<p>No <code>llm:v2</code> scores found, so the criterion is not scored.</p>")
+        return "".join(out)
+
+    def add(cond: str, f: str, n: str) -> float:
+        return float(by[(cond, f)]["stage2"][n]["added_recall"])
+
+    beat = [f for f in fams if by[("heldout", f)]["stage2"]["llm:v2"]["diff_vs_random_ci95"][0] > 0]
+    small = [f for f in fams if add("in_family", f, "llm:v2") < 0.10]
+    more = [f for f in fams if add("heldout", f, "llm:v2") > add("heldout", f, "more-stage-1")]
+    weakest = min(fams, key=lambda f: add("heldout", f, "llm:v2"))
+    need = 4
+    checks = [
+        (
+            f"(a) criterion: held out, llm:v2 beats random (interval above 0) in at least {need} of "
+            f"{len(fams)} families",
+            len(beat) >= need,
+            f"{len(beat)} of {len(fams)}: {'hit' if len(beat) >= need else 'MISS'}"
+            + (f" ({', '.join(beat)})" if beat else ""),
+        ),
+        (
+            f"(b) in-family, llm:v2 adds less than 0.10 in at least {need} of {len(fams)} families",
+            len(small) >= need,
+            f"{len(small)} of {len(fams)}",
+        ),
+    ]
+    if "llm:v1" in present:
+        cue = [f for f in fams if add("heldout", f, "llm:v1") >= add("heldout", f, "llm:v2")]
+        checks.append(
+            (
+                f"(c) held out, llm:v1 (names the types) adds at least as much as llm:v2 in at least "
+                f"{need} of {len(fams)} families",
+                len(cue) >= need,
+                f"{len(cue)} of {len(fams)}",
+            )
+        )
+    checks += [
+        (
+            f"(d) held out, llm:v2 adds more than more-stage-1 in at least {need} of {len(fams)} "
+            "families",
+            len(more) >= need,
+            f"{len(more)} of {len(fams)}",
+        ),
+        (
+            "(e) held out, review_ring has the smallest llm:v2 added recall",
+            weakest == "review_ring",
+            f"smallest: {weakest}",
+        ),
+    ]
+    out.append(
+        "<table><tr><th>declared expectation</th><th>held?</th><th>detail</th></tr>"
+        + _check_rows(checks)
+        + "</table>"
+    )
+    return "".join(out)
+
+
 def build_report(
     results_root: Path, prereg_path: Path, out_path: Path, commit: str = "unknown"
 ) -> Path:
@@ -1112,6 +1212,8 @@ def build_report(
     bundles = []
     for p in sorted((results_root / primary["run"]).glob("llm_bundle_*.json")):
         bundles.append(json.loads(p.read_text()))
+    ss_path = results_root / primary["run"] / "second_stage.json"
+    second = json.loads(ss_path.read_text()) if ss_path.exists() else None
     body = "".join(
         [
             f"<h1>abuse-triage-kit report</h1><p class=sub>Generated by <code>make demo</code> at commit "
@@ -1135,6 +1237,7 @@ def build_report(
             _expected(prereg, primary, s1, null, pf, extra),
             _replication(prereg, reps, primary, pf),
             _bundles(bundles, primary),
+            _second_stage(second),
             CANT_TELL,
         ]
     )

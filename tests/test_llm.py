@@ -168,3 +168,21 @@ def test_constructing_without_client_is_blocked_in_tests() -> None:
         AnthropicProvider(model="m")
     assert len(REAL_CLIENT_ATTEMPTS) == before + 1
     REAL_CLIENT_ATTEMPTS.pop()  # this deliberate attempt is the guard's own self-test
+
+
+def test_prompt_v2_names_no_abuse_type_and_v1_is_unchanged(dev_s1: Dataset) -> None:
+    ae = dev_s1.data[0]
+    v1, v2 = render_prompt(ae), render_prompt(ae, version="v2")
+    assert render_prompt(ae, version="v1") == v1
+    assert "hijacked accounts" in v1  # v1 still names the planted abuse types
+    # v2 differs only in the instructions: the account block and timeline are the same text
+    assert v1.split("ACCOUNT\n", 1)[1] == v2.split("ACCOUNT\n", 1)[1]
+    head = v2.split("ACCOUNT\n", 1)[0].lower()
+    for w in (
+        "hijack", "takeover", "fake", "reviews", "promo", "harvest", "scrap", "card", "payment",
+        "script", "automat", "template", r"\bring", "coupon", r"\bbot",
+    ):  # fmt: skip
+        assert not re.search(w, head), w
+    assert '"score"' in head and "human investigator" in head
+    with pytest.raises(ValueError):
+        render_prompt(ae, version="v9")

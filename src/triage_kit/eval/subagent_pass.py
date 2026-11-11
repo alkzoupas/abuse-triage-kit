@@ -86,10 +86,10 @@ def assign_batches(
     return batches
 
 
-def batch_text(accounts: Sequence[AccountEvents]) -> str:
+def batch_text(accounts: Sequence[AccountEvents], version: str = PROMPT_VERSION) -> str:
     parts = [WRAPPER.format(n=len(accounts))]
     for k, ae in enumerate(accounts, 1):
-        parts.append(f"===ACCOUNT {k}===\n{render_prompt(ae)}===END {k}===\n")
+        parts.append(f"===ACCOUNT {k}===\n{render_prompt(ae, version)}===END {k}===\n")
     return "\n".join(parts)
 
 
@@ -109,7 +109,9 @@ def parse_reply(text: str, expected_ids: Sequence[str]) -> dict[str, float]:
     return {a: found.get(a, 0.5) for a in expected_ids}
 
 
-def prepare(seed: int, s: float, n: int, out: Path) -> dict[str, Any]:
+def prepare(
+    seed: int, s: float, n: int, out: Path, version: str = PROMPT_VERSION
+) -> dict[str, Any]:
     _, data, labels = _load(seed, s, n)
     split = make_splits([ae.account for ae in data], labels)[0]
     by_id = {ae.account_id: ae for ae in data}
@@ -117,13 +119,13 @@ def prepare(seed: int, s: float, n: int, out: Path) -> dict[str, Any]:
     (out / "batches").mkdir(parents=True, exist_ok=True)
     (out / "replies").mkdir(parents=True, exist_ok=True)
     for i, ids in enumerate(batches):
-        text = batch_text([by_id[a] for a in ids])
+        text = batch_text([by_id[a] for a in ids], version)
         low = text.lower()
         bad = [w for w in FORBIDDEN if w in low]
         if bad:
             raise RuntimeError(f"batch {i} contains label vocabulary: {bad}")
         (out / "batches" / f"{i:02d}.txt").write_text(text)
-    manifest = {"seed": seed, "s": s, "n": n, "prompt_version": PROMPT_VERSION, "batches": batches}
+    manifest = {"seed": seed, "s": s, "n": n, "prompt_version": version, "batches": batches}
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n")
     return manifest
 
@@ -132,6 +134,7 @@ def collect(seed: int, s: float, n: int, out: Path, model: str) -> Path:
     cfg, data, labels = _load(seed, s, n)
     split = make_splits([ae.account for ae in data], labels)[0]
     manifest = json.loads((out / "manifest.json").read_text())
+    version = str(manifest.get("prompt_version", PROMPT_VERSION))
     scores: dict[str, float] = {}
     missing_batches, unparsed = [], 0
     for i, ids in enumerate(manifest["batches"]):
@@ -146,7 +149,7 @@ def collect(seed: int, s: float, n: int, out: Path, model: str) -> Path:
         "provider": "claude-code-subagent",
         "model": model,
         "run": cfg.name,
-        "prompt_version": f"{PROMPT_VERSION}+batched{BATCH_SIZE}",
+        "prompt_version": f"{version}+batched{BATCH_SIZE}",
         "n_scored": len(scores),
         "n_unparsed_scored_0.5": unparsed,
         "missing_batches": missing_batches,
@@ -161,7 +164,8 @@ def collect(seed: int, s: float, n: int, out: Path, model: str) -> Path:
     }
     dest = cfg.results_root / cfg.name
     dest.mkdir(parents=True, exist_ok=True)
-    path = dest / f"llm_bundle_subagent_{model.replace('/', '_')}.json"
+    suffix = "" if version == "v1" else f"_{version}"  # v1 keeps the original file name
+    path = dest / f"llm_bundle_subagent_{model.replace('/', '_')}{suffix}.json"
     path.write_text(json.dumps(bundle, sort_keys=True, indent=1) + "\n")
     return path
 
@@ -183,9 +187,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--n", type=int, default=5000)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--model", default="unknown")
+    ap.add_argument("--prompt-version", default=PROMPT_VERSION, help="prepare only: v1 or v2")
     a = ap.parse_args(argv)
     if a.step == "prepare":
-        m = prepare(a.seed, a.s, a.n, a.out)
+        m = prepare(a.seed, a.s, a.n, a.out, a.prompt_version)
         print(f"wrote {len(m['batches'])} batches to {a.out / 'batches'}")
     else:
         print(f"wrote {collect(a.seed, a.s, a.n, a.out, a.model)}")

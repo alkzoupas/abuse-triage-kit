@@ -48,6 +48,20 @@
   scraping 0.962, template 0.868, promo 0.809, ring 0.581. H6 ranking part MISS (ring weakest).
   Also fixed: the report's Real LLM pass table read metrics nothing computed (now computed when a
   bundle is written, for the API pass too).
+- [x] 21 Second-stage recall (owner-requested, amendment 2026-11-09; branch claude/repo-review-linkedin-04cea0).
+  Outcome: the report shows what an LLM reviewer adds after `gb+sim` flags its top 50, in-family and
+  held out, for a generic prompt (v2, primary) and the type-naming prompt (v1), against random,
+  rules-all-on and more-stage-1. Acceptance: tests/test_second_stage.py (known-answer two-stage
+  recall, tie rule, random expectation, bootstrap determinism), tests/test_llm.py (v2 prompt names
+  no abuse type; v1 byte-identical), tests/test_demo.py (report section appears when both bundles
+  exist). Status: done 2026-11-14.
+  Result (seed 9001 s=0.5, claude-opus-5-5 subagents, v2 1,922/1,922 parsed, v1 1 unparsed):
+  held out, llm:v2 added recall ato 0.879, card 0.718, ring 0.263, scraping 0.231, promo 0.120,
+  template 0.118. Expectations: (a) HIT 4/6 (criterion), (b) MISS 3/6, (c) HIT 5/6 (largest v1
+  gain 0.023, two ties), (d) HIT 6/6, (e) MISS (template_operator smallest, not review_ring).
+  Procedure change 2026-11-11 for the last 15 batches (paged reads in one message, waves of 3):
+  about 0.4M input-side tokens per reviewer against about 0.8M before. Results are not committed;
+  the full report needs `make demo` in this worktree. Last check: `make check` exit 0, 124 passed.
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 

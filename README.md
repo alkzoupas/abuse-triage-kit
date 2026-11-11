@@ -52,6 +52,7 @@ rebuilt from seeds; the same seed gives byte-identical data and metrics.
 | Frozen v3 confirmation on fresh seeds (after `make demo`) | `make confirm` |
 | Second v3 confirmation, 20,000 accounts per seed (~40 min) | `make confirm-large` |
 | LLM pass without an API key: Claude Code subagents as the reviewer (exploratory) | `python -m triage_kit.eval.subagent_pass prepare` / `collect` |
+| Second-stage recall: what the LLM adds after `gb+sim` flags its top 50 (exploratory) | `python -m triage_kit.eval.second_stage --seed 9001` |
 | Report | `src/triage_kit/report.py` |
 | Bring your own events | [docs/byo-events.md](docs/byo-events.md), `python -m triage_kit.byo` |
 
@@ -175,6 +176,29 @@ below). Synthetic data only.
   no cost; it is one seed; and the synthetic families were written by a Claude model from
   textbook mechanisms, so a Claude reviewer may share the priors that make them easy. It says
   little about real abuse.
+  *Correction (2026-11-09):* "needs no training data" overstated it. That prompt (v1) names the
+  six planted abuse types in paraphrase, so the reviewer was told what to look for.
+- **LLM as a second stage (exploratory, declared 2026-11-09): after `gb+sim` flags its top 50,
+  a generic reviewer recovers much of what a held-out model missed.** Same seed and accounts,
+  same subagent reviewer (`claude-opus-5-5`), two prompts: v2, which names no abuse type
+  (primary), and v1. Each second stage flags 50 more accounts among those stage 1 let through;
+  added recall is the share of the family's test accounts it catches. Held out, `llm:v2` adds
+  0.879 for account takeover (stage 1 alone 0.119), 0.718 card testing (0.231), 0.263 review ring
+  (0.526), 0.231 scraping (0.731), 0.120 promo abuse (0.780) and 0.118 template operator (0.765).
+  Against the declared expectations: (a) the criterion holds, v2 beats random with the interval
+  above 0 in 4 of 6 families (not review ring or template operator, whose intervals cross 0);
+  (b) missed, in-family v2 still adds 0.10 or more in 3 of 6 families; (c) holds only in the
+  weakest sense, v1 adds at least as much as v2 in 5 of 6 but the largest gain is 0.023 and two
+  are exact ties, so naming the types barely mattered; (d) holds, v2 beats giving `gb+sim` 50
+  more flags in 6 of 6; (e) missed, the smallest gain is template operator, not review ring.
+  All hand-written rules switched on match v2 on card testing and scraping and trail it elsewhere.
+  As a repeatability check, v1's in-family PR-AUC on this second run against the first: account
+  takeover 0.995 / 0.988, card testing 0.951 / 0.951, scraping 0.962 / 0.962, template operator
+  0.873 / 0.868, promo abuse 0.849 / 0.809, review ring 0.600 / 0.581; v2 scores 0.994, 0.950,
+  0.962, 0.871, 0.871 and 0.639. v1 had 1 account of 1,922 with no parseable reply (scored 0.5),
+  v2 none. The earlier caveats all apply (batched review, no token counts, one seed, generator
+  written by a Claude model), plus one: the last batches of each prompt were read in fewer turns
+  after a 2026-11-11 procedure change, with the same text, model and accounts.
 
 **How these numbers came about.** The eval seeds were run several times, and the report says so.
 The first run failed the null control because of a split artifact (fixed). The second passed.
