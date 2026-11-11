@@ -60,8 +60,8 @@
   template 0.118. Expectations: (a) HIT 4/6 (criterion), (b) MISS 3/6, (c) HIT 5/6 (largest v1
   gain 0.023, two ties), (d) HIT 6/6, (e) MISS (template_operator smallest, not review_ring).
   Procedure change 2026-11-11 for the last 15 batches (paged reads in one message, waves of 3):
-  about 0.4M input-side tokens per reviewer against about 0.8M before. Results are not committed;
-  the full report needs `make demo` in this worktree. Last check: `make check` exit 0, 124 passed.
+  about 0.4M input-side tokens per reviewer against about 0.8M before. Results are not committed.
+  Last check: `make check` exit 0, 124 passed.
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
@@ -113,8 +113,47 @@
   token counts) would test H6 properly and give a cost; it needs an ANTHROPIC_API_KEY in the
   environment's settings. Worth doing once a key is available?
 
+## Where things stand (2026-11-14)
+Everything is on `main` (PR #3 merged, `ec474c0`); `main` is the remote's default branch. Reviewer
+replies, bundles and `second_stage.json` are in `results/` of the main checkout (git-ignored, so
+local only; the only other copy is the old story worktree).
+
+What the LLM work showed (stories 20 and 21; synthetic data, one seed, Claude-written generator):
+- A reviewer after the feature model pays off where that model is blind. Held out, `gb+sim` alone
+  catches 0.119 of account takeover and 0.231 of card testing in its top 50; a generic reviewer's
+  next 50 flags add 0.879 and 0.718.
+- It adds little where stage 1 already works (0.12 to 0.26 on the other four families), and for
+  review ring and template operator the gain is not distinguishable from random at this size.
+  Those are the families whose evidence is across accounts; the reviewer sees one at a time.
+- Naming the abuse types in the prompt barely changes anything (largest gain 0.023), so the result
+  does not rest on the prompt cue the 2026-11-09 review found.
+- A second opinion beats a bigger budget: v2 beats 50 more `gb+sim` flags in 6 of 6 families.
+- All hand-written rules switched on match the reviewer on card testing and scraping.
+- Still unknown: cost (no token counts in a subagent pass), a second seed, and real data.
+
+Running a subagent pass without burning the usage limit:
+- A reviewer costs about 0.4M input-side tokens per batch of about 47 accounts on Opus, most of it
+  the batch text billed on each of 3 turns plus about 31k of Claude Code overhead per turn.
+- The read guard rejects a whole-file read of a 200 to 270 KB batch. Tell each reviewer the line
+  count and ask for all 500-line page reads in one message, then one Write. Without that they take
+  6 to 12 turns and about twice the tokens.
+- Pilot one batch, measure it from its transcript, then waves of 3. A wave of 20 hit the limit and
+  lost 15 reviewers' work. The weekly headroom cannot be read in advance.
+- Never mix models inside one pass, and never collect a pass with batches missing (they score 0.5).
+
+Open, in the order suggested:
+1. Owner reads the regenerated report, `report/index.html` in the main checkout (built at
+   `173b457`, same tree as `main`; second-stage section present).
+2. Decide whether the repo goes public for a write-up; it is private now.
+3. Q13, the API pass: the only way to get a cost figure and test H6's cost part.
+4. Optional: the second stage on one more eval seed (v2 only is 41 reviewers, about 16M tokens).
+5. Housekeeping: delete remote branches `claude/ecstatic-shannon-1tsjx4` and
+   `claude/repo-review-linkedin-04cea0` (both merged), then the story worktree.
+
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
 
 ## Last check
-- `make test`: 113 passed in 665.97s (0:11:05) (exit 0); lint, typecheck exit 0; `make demo` 9m55s, null 1/132 primary (null PR-AUC), 0/132 pre-registered (base rate); `make confirm` 13m08s; `make confirm-large` 38m50s.
+- 2026-11-14, at `173b457` (same tree as `main` `ec474c0`): `make check` exit 0, lint and typecheck
+  clean, `124 passed in 414.00s (0:06:54)`; `make demo` exit 0, `wrote report/index.html in 223s`.
+  `make confirm` and `make confirm-large` not rerun (last: 13m08s and 38m50s, before story 20).
