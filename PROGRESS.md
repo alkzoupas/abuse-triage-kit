@@ -62,6 +62,23 @@
   Procedure change 2026-11-11 for the last 15 batches (paged reads in one message, waves of 3):
   about 0.4M input-side tokens per reviewer against about 0.8M before. Results are not committed.
   Last check: `make check` exit 0, 124 passed.
+- [x] 22 Fixes from the round-1 design review (Codex gpt-6.1-sol, `reviews/round-1/`, verdict
+  FIX-THEN-SHIP; owner asked for all four; branch claude/story22-review-fixes).
+  Outcome: the report, README, code docstrings and pre-registration describe the second stage as
+  what it is: a retrospective calculation on fixed full-test scores (1), with intervals
+  conditional on those scores (2), a fractional tie rule that is a surrogate when stage 1 ties at
+  its budget (3), and stage-2 precision shown beside added recall (4). No number changed.
+  Acceptance (tests/test_second_stage.py): test_report_describes_a_retrospective_calculation_on_full_test_scores,
+  test_report_says_what_the_intervals_are_conditional_on,
+  test_fractional_stage_one_tie_is_a_surrogate_not_the_sequential_expectation (documents the
+  limit; passed before the change), test_cell_records_whether_stage_one_ties_at_the_budget,
+  test_report_states_the_tie_rule_as_a_surrogate_and_whether_stage_one_tied,
+  test_report_shows_stage_two_precision_beside_added_recall. Five of six failed first.
+  `second_stage.json` regenerated for the new `stage1_boundary_tie` field: false in all 12
+  cells, every other value identical to the previous file. Status: done 2026-11-11.
+  Not done: the tie implementation is unchanged (surrogate kept, as the review allowed); no
+  survivor-only pass; the old "needs no training data" README sentence still stands with its
+  dated correction (the reviewer's low-priority remark, not one of the four fixes).
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
@@ -154,6 +171,7 @@ Open, in the order suggested:
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
 
 ## Last check
-- 2026-11-14, at `173b457` (same tree as `main` `ec474c0`): `make check` exit 0, lint and typecheck
-  clean, `124 passed in 414.00s (0:06:54)`; `make demo` exit 0, `wrote report/index.html in 223s`.
-  `make confirm` and `make confirm-large` not rerun (last: 13m08s and 38m50s, before story 20).
+- 2026-11-11, branch claude/story22-review-fixes: `make check` exit 0, lint and typecheck clean,
+  `130 passed in 343.92s (0:05:43)`. Run with the old story worktree's venv and
+  `PYTHONPATH=src` (the main checkout has no venv). `make demo` not rerun; the report was rebuilt
+  from the existing results with `build_report`. `make confirm` and `make confirm-large` not rerun.

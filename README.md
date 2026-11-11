@@ -179,12 +179,28 @@ below). Synthetic data only.
   *Correction (2026-11-09):* "needs no training data" overstated it. That prompt (v1) names the
   six planted abuse types in paraphrase, so the reviewer was told what to look for.
 - **LLM as a second stage (exploratory, declared 2026-11-09): after `gb+sim` flags its top 50,
-  a generic reviewer recovers much of what a held-out model missed.** Same seed and accounts,
+  a generic reviewer's next 50 flags recover most of account takeover and card testing held out,
+  and little elsewhere, at 8 to 12% precision.** Same seed and accounts,
   same subagent reviewer (`claude-opus-5-5`), two prompts: v2, which names no abuse type
   (primary), and v1. Each second stage flags 50 more accounts among those stage 1 let through;
   added recall is the share of the family's test accounts it catches. Held out, `llm:v2` adds
   0.879 for account takeover (stage 1 alone 0.119), 0.718 card testing (0.231), 0.263 review ring
   (0.526), 0.231 scraping (0.731), 0.120 promo abuse (0.780) and 0.118 template operator (0.765).
+  Precision of those 50 flags, held out: 0.738 account takeover, 0.560 card testing, 0.120
+  scraping, 0.120 promo abuse, 0.100 review ring, 0.080 template operator. So on four of the six
+  families the gain is 4 to 6 real accounts per 50 flags. Each cell is one synthetic family plus
+  the benign test accounts, so budgets, precision and prevalence are per family, not for a mixed
+  queue.
+  What was computed: a retrospective calculation on fixed scores. The reviewer scored all 1,922
+  test accounts once, in mixed batches that included several families and the accounts stage 1
+  goes on to flag; stage 1's flags are removed afterwards, in the ranking. That equals a
+  reviewer shown only stage 1's survivors only if a score does not depend on the other accounts
+  in its batch, which was not tested. It does not measure reduced reviewer work or a deployed
+  routed review. The intervals resample accounts with the scores held fixed: they are
+  conditional on this split, these fitted models, this batch assignment and these replies, and
+  do not cover a rerun of the reviewer or a rebatching. Ties at a budget are taken fractionally,
+  a surrogate that is exact when stage 1 has no tie at its budget; no cell in this run has one,
+  so the point estimates are exact (bootstrap replicates were not checked).
   Against the declared expectations: (a) the criterion holds, v2 beats random with the interval
   above 0 in 4 of 6 families (not review ring or template operator, whose intervals cross 0);
   (b) missed, in-family v2 still adds 0.10 or more in 3 of 6 families; (c) holds only in the

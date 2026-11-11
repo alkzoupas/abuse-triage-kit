@@ -1097,6 +1097,27 @@ control, held-out families and confidence intervals), which you can repeat once 
 """
 
 
+def _stage1_ties(cells: Sequence[dict[str, Any]]) -> str:
+    """Whether stage 1 tied at its budget in any cell (point estimates), from the results file."""
+    if not all("stage1_boundary_tie" in c for c in cells):
+        return (
+            "This results file does not record whether stage 1 tied at its budget, so whether "
+            "the point estimates are exact is not known from it."
+        )
+    label = {"heldout": "held out", "in_family": "in-family"}
+    tied = [f"{c['family']} ({label[c['condition']]})" for c in cells if c["stage1_boundary_tie"]]
+    if tied:
+        return (
+            f"Stage 1 ties at the budget in: {esc(', '.join(tied))}. Those point estimates are "
+            "the surrogate, not the exact sequential expectation."
+        )
+    return (
+        "No cell in this run has a stage-1 tie at the budget, so every point estimate is exact. "
+        "Bootstrap replicates were not checked for ties, so a small effect on the intervals is "
+        "not ruled out."
+    )
+
+
 def _second_stage(d: dict[str, Any] | None) -> str:
     """Second-stage recall (PREREGISTRATION.md, AMENDMENTS, 2026-11-09). Empty without results."""
     if not d:
@@ -1106,18 +1127,39 @@ def _second_stage(d: dict[str, Any] | None) -> str:
     fams = [c["family"] for c in d["cells"] if c["condition"] == "heldout"]
     order = ("llm:v2", "llm:v1", "rules:all", "more-stage-1", "random")
     present = [n for n in order if all(n in c["stage2"] for c in d["cells"])]
+    has_v2 = "llm:v2" in present
     out = [
         "<h2>Second stage: what the LLM adds after the feature model</h2>",
         '<p class="banner"><b>Exploratory.</b> Declared on 2026-11-09, before scoring. The reviewer '
         "is Claude Code subagents, not an API pass (batched review, no token counts, one seed), "
         "and the synthetic families were written by a Claude model.</p>",
         f"<p>Stage 1 is <code>{esc(s1)}</code> flagging its top {k} accounts in each cell. Each "
-        f"second stage sees only what stage 1 allowed and flags {k} more. <b>Added recall</b> is the "
-        "share of the family's test accounts that the second stage catches. <code>llm:v2</code> is a "
+        f"second stage then flags {k} more among the accounts stage 1 did not flag. <b>Added "
+        "recall</b> is the share of the family's test accounts that the second stage catches. "
+        f"<b>Precision</b> is the share of the second stage's {k} flags that are the family's "
+        "accounts. A cell is one synthetic family plus the benign test accounts, so budgets, "
+        "precision and prevalence are per family, not for a mixed queue. <code>llm:v2</code> is a "
         "generic prompt that names no abuse type (primary); <code>llm:v1</code> names the six planted "
         "types; <code>rules:all</code> is every hand-written rule; <code>more-stage-1</code> gives "
         f"the first stage {k} more flags; <code>random</code> is {k} of the allowed accounts at random. "
         f"Model <code>{esc(d.get('model', ''))}</code>. Intervals are 95%, widened for few groups.</p>",
+        "<p><b>What was actually computed.</b> This is a retrospective calculation on fixed scores. "
+        "The reviewer scored every test account once, in mixed batches of about 47 that included "
+        "several abuse families and the accounts stage 1 goes on to flag. The same score per "
+        "account is reused in every cell, and stage 1's flags are removed afterwards, in the "
+        "ranking. That equals a reviewer that is only shown stage 1's survivors only if a score "
+        "does not depend on the other accounts in its batch. That was not tested, and "
+        "survivor-only batches could score differently. The calculation does not measure reduced "
+        "reviewer work or a deployed routed review.</p>"
+        "<p><b>What the intervals cover.</b> Each bootstrap replicate resamples accounts (whole "
+        "groups) and reuses the same scores. The intervals are conditional on this split, these "
+        "fitted models, this batch assignment and these replies. They do not cover a rerun of the "
+        "reviewer, a rebatching, or the 2026-11-11 change in how batches were read, so they are "
+        "not a measure of how repeatable the reviewer is.</p>"
+        "<p><b>Tie rule.</b> A block of tied scores that straddles a budget is taken fractionally, "
+        "and stage 2 is allocated against the fractional weights stage 1 leaves. That is a defined "
+        "surrogate: it equals the expectation under random tie-breaking when stage 1 has no tie at "
+        "its budget, and can differ when it has one. " + _stage1_ties(d["cells"]) + "</p>",
     ]
     for cond, title in (("heldout", "Held out"), ("in_family", "In-family")):
         why = "has never seen" if cond == "heldout" else "was trained on"
@@ -1125,7 +1167,9 @@ def _second_stage(d: dict[str, Any] | None) -> str:
             f"<h3>{title}: stage 1 {why} the family</h3><table><tr><th>family</th>"
             f"<th>abuse accounts</th><th>stage-1 recall at {k}</th>"
             + "".join(f"<th>+ {esc(n)}</th>" for n in present)
-            + "<th>llm:v2 minus random</th></tr>"
+            + "<th>llm:v2 minus random</th>"
+            + (f"<th>llm:v2 precision (family accounts in its {k} flags)</th>" if has_v2 else "")
+            + "</tr>"
         )
         for f in fams:
             c = by[(cond, f)]
@@ -1135,9 +1179,13 @@ def _second_stage(d: dict[str, Any] | None) -> str:
                 for n in present
             )
             diff = num(v2.get("diff_vs_random"), "", v2.get("diff_vs_random_ci95")) if v2 else "—"
+            prec = v2.get("stage2_precision")
+            ptxt = "—" if prec is None else f"{f3(prec)} ({prec * k:.1f} of {k})"
             out.append(
                 f"<tr><td>{esc(f)}</td><td class=n>{c['n_pos']}</td>"
-                f"<td class=n>{f3(c['stage1_recall'])}</td>{cells}<td class=n>{diff}</td></tr>"
+                f"<td class=n>{f3(c['stage1_recall'])}</td>{cells}<td class=n>{diff}</td>"
+                + (f"<td class=n>{ptxt}</td>" if has_v2 else "")
+                + "</tr>"
             )
         out.append("</table>")
     if "llm:v2" not in present:

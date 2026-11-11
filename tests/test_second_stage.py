@@ -152,3 +152,100 @@ def test_report_section_is_empty_without_results_and_scores_the_criterion() -> N
     cells[3]["stage2"]["llm:v2"]["diff_vs_random_ci95"] = [-0.05, 0.5]  # type: ignore[index]
     page = _second_stage({"model": "m", "k": 50, "stage1": "gb+sim", "cells": cells})
     assert "3 of 6" in page and "MISS" in page
+
+
+# --- Story 22: fixes from the round-1 design review (reviews/round-1) ---
+
+
+def test_fractional_stage_one_tie_is_a_surrogate_not_the_sequential_expectation() -> None:
+    # Reviewer's counterexample. Accounts A, B, C; A is the only abuse; budget 1 per stage.
+    # Stage 1 ties A and B. Really breaking that tie at random:
+    #   removes A (prob 1/2): stage 2 can catch no abuse                       -> 0
+    #   removes B (prob 1/2): stage 2 ties A and C, catches A with prob 1/2   -> 1/2
+    # so the sequential expectation is 1/4. The fractional rule instead leaves weights
+    # (1/2, 1/2, 1), takes 1 of the 3/2 weight tied at stage-2 score 1, and catches
+    # (1/2) / (3/2) = 1/3. The rule is a defined surrogate; it is exact only when stage 1
+    # has no tie at its budget. This test documents that limit.
+    r = two_stage([1, 0, 0], [1, 1, 0], [1, 0, 1], np.ones(3), 1)
+    assert r["added_recall"] == pytest.approx(1 / 3)
+    assert abs(r["added_recall"] - 1 / 4) > 0.08
+
+
+def test_cell_records_whether_stage_one_ties_at_the_budget() -> None:
+    y = np.array([1, 0, 0])
+    s2 = {"x": np.array([1.0, 0.0, 1.0]), "more-stage-1": np.array([1.0, 1.0, 0.0])}
+    units = np.array(["a", "b", "c"])
+    tied = cell_second_stage(y, np.array([1.0, 1.0, 0.0]), s2, units, k=1, n_boot=5, seed=1)
+    clean = cell_second_stage(y, np.array([1.0, 0.5, 0.0]), s2, units, k=1, n_boot=5, seed=1)
+    assert tied["stage1_boundary_tie"] is True
+    assert clean["stage1_boundary_tie"] is False
+
+
+_FAMS = ["ato", "review_ring", "promo_abuse", "scraping", "card_testing", "template_operator"]
+
+
+def _report_page(tie: bool | None = False, tied_family: str | None = None) -> str:
+    def st(x: float, precision: float) -> dict[str, object]:
+        return {
+            "added_recall": x,
+            "added_recall_ci95": [max(0.0, x - 0.1), min(1.0, x + 0.1)],
+            "stage2_precision": precision,
+            "diff_vs_random": x - 0.01,
+            "diff_vs_random_ci95": [0.02, x + 0.1],
+        }
+
+    cells = []
+    for cond in ("heldout", "in_family"):
+        for fam in _FAMS:
+            c: dict[str, object] = {
+                "family": fam,
+                "condition": cond,
+                "n_pos": 30,
+                "k": 50,
+                "stage1_recall": 0.2,
+                "stage2": {
+                    "llm:v2": st(0.2, 0.12),
+                    "llm:v1": st(0.25, 0.15),
+                    "rules:all": st(0.3, 0.18),
+                    "more-stage-1": st(0.05, 0.03),
+                    "random": st(0.01, 0.006),
+                },
+            }
+            if tie is not None:
+                c["stage1_boundary_tie"] = tie or (cond == "heldout" and fam == tied_family)
+            cells.append(c)
+    return _second_stage({"model": "m", "k": 50, "stage1": "gb+sim", "cells": cells})
+
+
+def test_report_describes_a_retrospective_calculation_on_full_test_scores() -> None:
+    # finding 1: the reviewer scored every test account in mixed batches; stage 1's filter is
+    # applied afterwards in the ranking. The report must not claim survivor-only inputs.
+    page = _report_page()
+    assert "sees only what stage 1 allowed" not in page
+    assert "retrospective" in page
+    assert "scored every test account" in page
+    assert "not tested" in page  # independence of a score from its batch
+    assert "does not measure" in page  # reduced reviewer work / a routed deployment
+
+
+def test_report_says_what_the_intervals_are_conditional_on() -> None:
+    # finding 2: the bootstrap resamples accounts and holds the reviewer's scores fixed
+    page = _report_page()
+    assert "conditional on" in page
+    assert "do not cover" in page
+
+
+def test_report_shows_stage_two_precision_beside_added_recall() -> None:
+    # finding 4: precision 0.12 at k = 50 is 6.0 of the family's accounts in 50 flags
+    page = _report_page()
+    assert "llm:v2 precision" in page
+    assert "0.120 (6.0 of 50)" in page
+
+
+def test_report_states_the_tie_rule_as_a_surrogate_and_whether_stage_one_tied() -> None:
+    # finding 3
+    assert "fractional" in _report_page()
+    assert "No cell in this run has a stage-1 tie at the budget" in _report_page(tie=False)
+    tied = _report_page(tie=False, tied_family="scraping")
+    assert "Stage 1 ties at the budget in: scraping (held out)" in tied
+    assert "does not record" in _report_page(tie=None)
