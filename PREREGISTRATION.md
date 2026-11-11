@@ -610,3 +610,33 @@ v2 34–40):
 ```prereg-amendment
 second_stage: {seed: 9001, s: 0.5, k: 50, stage1: gb+sim, primary_stage2: "llm:v2"}
 ```
+
+Clarification, 2026-11-11, after scoring, from the round-1 design review (Codex `gpt-6.1-sol`;
+`reviews/round-1/`). The text above is left as declared. Nothing was rescored, no criterion
+changed, and the expectations stand as reported (a hit, b miss, c hit, d hit, e miss). Four
+corrections to how the method is described:
+
+- **"Stage 2 sees only the accounts stage 1 did not flag"** describes the ranking, not the
+  reviewer's input. The reviewer scored all 1,922 test accounts once, in mixed batches that
+  included several families and the accounts stage 1 goes on to flag. The same score per account
+  is reused in all 12 cells and stage 1's flags are removed afterwards. The result is a
+  retrospective calculation on fixed scores. It equals a survivor-only review only if a score
+  does not depend on the other accounts in its batch, which was not tested. It does not measure
+  reduced reviewer work or a deployed routed review. A survivor-only pass would be a new
+  experiment with its own amendment, and would not replace this run.
+- **Intervals** resample truth units and hold every score fixed. They are conditional on this
+  split, these fitted models, this batch assignment and these replies. They do not cover a rerun
+  of the reviewer, a rebatching, or the 2026-11-11 procedure change. Review-ring members are
+  spread across batches, so the cluster bootstrap does not capture dependence within a batch.
+- **Tie rule:** "the expected value under random tie-breaking" holds for one stage. Across two
+  stages the rule is a defined fractional-weight surrogate: stage 2 is allocated against the
+  fractional weights stage 1 leaves. It equals the sequential expectation when stage 1 has no tie
+  at its budget and can differ when it has one (the reviewer's example gives 1/3 against an exact
+  1/4; now a test). No cell in this run has a stage-1 tie at the budget, so the point estimates
+  are exact; `second_stage.json` now records this per cell. Bootstrap replicates were not checked.
+- **Stage-2 precision** was promised under "Metric" and saved, but the report and README showed
+  added recall only. Both now show it for `llm:v2`. Held out: account takeover 0.738, card
+  testing 0.560, scraping 0.120, promo abuse 0.120, review ring 0.100, template operator 0.080.
+
+`second_stage.json` was regenerated to add the per-cell `stage1_boundary_tie` field; every
+other value is identical to the file it replaces.

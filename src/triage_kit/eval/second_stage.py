@@ -4,10 +4,21 @@ See PREREGISTRATION.md, AMENDMENTS (2026-11-09). Exploratory.
 
     python -m triage_kit.eval.second_stage --seed 9001 --s 0.5 --model opus
 
-Stage 1 (`gb+sim`) flags its top k accounts in a cell. Stage 2 sees only the accounts stage 1
+Stage 1 (`gb+sim`) flags its top k accounts in a cell. Stage 2 ranks only the accounts stage 1
 did not flag and flags its own top k. Added recall = family accounts stage 2 catches / all
 family accounts in the cell. Reads the subagent bundles written by `subagent_pass collect`
 (prompt v1 and v2) and writes results/<run>/second_stage.json.
+
+This is a retrospective calculation on fixed scores. The reviewer scored every test account
+once, in mixed batches, before any stage-1 filtering; the same score per account is reused in
+every cell and stage 1's flags are removed afterwards, in the ranking. That equals a reviewer
+that is only shown stage 1's survivors only if a score does not depend on the other accounts
+in its batch, which was not tested. It does not measure reduced reviewer work or a deployed
+routed review.
+
+Intervals resample accounts and hold every score fixed: they are conditional on this split,
+these fitted models, this batch assignment and these replies, and do not cover a rerun of the
+reviewer or a rebatching.
 """
 
 from __future__ import annotations
@@ -38,9 +49,9 @@ Arr = npt.NDArray[np.float64]
 def take_top_k(s: npt.ArrayLike, w: npt.ArrayLike, k: float) -> Arr:
     """Share of each account taken when flagging the top `k` (by weight) of scores `s`.
 
-    A block of tied scores that straddles the budget is taken fractionally: the expected
-    value under random tie-breaking. `w` are multiplicities (1 for the point estimate,
-    bootstrap counts otherwise; stage 2 passes what stage 1 left)."""
+    A block of tied scores that straddles the budget is taken fractionally: for one stage,
+    the expected value under random tie-breaking. `w` are multiplicities (1 for the point
+    estimate, bootstrap counts otherwise; stage 2 passes what stage 1 left)."""
     sa, wa = np.asarray(s, dtype=float), np.asarray(w, dtype=float)
     order = np.argsort(-sa, kind="mergesort")
     ss, ws = sa[order], wa[order]
@@ -60,7 +71,12 @@ def two_stage(
     y: npt.ArrayLike, s1: npt.ArrayLike, s2: npt.ArrayLike, w: npt.ArrayLike, k: float
 ) -> dict[str, float]:
     """Stage-1 recall at k, and the recall and precision of stage 2's k flags among the
-    accounts stage 1 allowed."""
+    accounts stage 1 allowed.
+
+    Stage 2 is allocated against the fractional weights stage 1 leaves. That is a defined
+    surrogate: it equals the expectation under sequential random tie-breaking when stage 1
+    has no tie at its budget, and can differ when it has one (1/3 against 1/4 in
+    tests/test_second_stage.py)."""
     ya, wa = np.asarray(y, dtype=float), np.asarray(w, dtype=float)
     t1 = take_top_k(s1, wa, k)
     w2 = wa * (1.0 - t1)
@@ -107,6 +123,8 @@ def cell_second_stage(
     scorers["random"] = np.zeros(len(ya))  # one tie block: the exact expectation
     ones = np.ones(len(ya))
     point = {name: two_stage(ya, s1a, s2, ones, k) for name, s2 in scorers.items()}
+    t1 = take_top_k(s1a, ones, k)
+    boundary_tie = bool(np.any((t1 > 0.0) & (t1 < 1.0)))  # point estimate only
 
     uniq, inv = np.unique(np.asarray(units).astype(str), return_inverse=True)
     unit_pos = np.zeros(len(uniq), dtype=bool)
@@ -133,6 +151,7 @@ def cell_second_stage(
         "k": k,
         "stage1_recall": _r(s1_point),
         "stage1_recall_ci95": _widened(s1_point, stage1, n_units)[1],
+        "stage1_boundary_tie": boundary_tie,
         "stage2": {},
     }
     for name in scorers:
