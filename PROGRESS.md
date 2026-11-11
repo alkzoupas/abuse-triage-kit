@@ -55,6 +55,14 @@
   recall, tie rule, random expectation, bootstrap determinism), tests/test_llm.py (v2 prompt names
   no abuse type; v1 byte-identical), tests/test_demo.py (report section appears when both bundles
   exist). Status: in progress.
+  State 2026-11-11: v2 replies complete (41/41 batches, 1,922/1,922 parsed), collected and scored
+  (`results/seed9001_s0.50_n5000/second_stage.json`, v2 only; results are not committed). v1 has
+  replies for batches 00–35; 36–40 are missing (Opus weekly limit hit, resets 2026-11-14 04:00
+  PT) and v1 is not collected: do not collect it until all 41 exist, missing accounts would score
+  0.5. Remaining batches use the paged-read instruction (amendment 2026-11-11), waves of 3, about
+  0.4M input-side tokens per reviewer. Then: collect v1, rerun second_stage, score expectation
+  (c), write the report section, README and this entry. v2-only reading: (a) hit 4/6, (b) miss
+  3/6, (d) hit 6/6, (e) miss (template_operator smallest, not review_ring).
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
