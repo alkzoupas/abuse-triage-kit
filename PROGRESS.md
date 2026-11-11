@@ -75,7 +75,8 @@
   test_report_states_the_tie_rule_as_a_surrogate_and_whether_stage_one_tied,
   test_report_shows_stage_two_precision_beside_added_recall. Five of six failed first.
   `second_stage.json` regenerated for the new `stage1_boundary_tie` field: false in all 12
-  cells, every other value identical to the previous file. Status: done 2026-11-11.
+  cells, every other value identical to the previous file. Status: done in `db772cb`, merged
+  to `main` as `1a917f4` (PR #5).
   Not done: the tie implementation is unchanged (surrogate kept, as the review allowed); no
   survivor-only pass; the old "needs no training data" README sentence still stands with its
   dated correction (the reviewer's low-priority remark, not one of the four fixes).
@@ -130,6 +131,49 @@
   token counts) would test H6 properly and give a cost; it needs an ANTHROPIC_API_KEY in the
   environment's settings. Worth doing once a key is available?
 
+## Resume here (2026-11-11)
+- **Branch:** `claude/handoff-batch-independence` off `main` `1a917f4`. It holds only this
+  PROGRESS update. Uncommitted and the owner's to decide: `.gitignore` (ignores `/graft/`),
+  `.ignore`, `reviews/` (PREREGISTRATION.md's 2026-11-11 clarification points at `reviews/round-1/`).
+- **Environment:** `.venv` now exists in the main checkout (Python 3.12, `uv pip install -e ".[dev]"`),
+  so plain `make check` works. The old story worktree
+  (`.claude/worktrees/repo-review-linkedin-04cea0`) is no longer needed for its venv; its
+  `results/` is the only second copy of the reviewer replies. Deleting it is the owner's call.
+- **Very next step:** story 23 below. Nothing is written or scored for it yet. First get the
+  owner's approval of the design and criterion, then write the amendment, then tests, then pilot.
+
+### Story 23 (proposed, not approved): does a reviewer's score depend on its batch?
+Why: story 21's second-stage numbers reuse one score per account from a full-test pass (round-1
+review, finding 1). They describe a survivor-only reviewer only if a score does not depend on
+the other accounts in the batch. The reviewer called this the riskiest assumption.
+- **Outcome:** a measured answer, on existing accounts, to how much `llm:v2` scores move when the
+  same accounts are scored in different batch compositions, reported next to the story 21 result.
+- **Sketch (to settle with the owner before the amendment):** take the accounts of about 4
+  existing v2 batches (about 188 accounts), put them into new batches with a different shuffle
+  seed and different batch-mates, score with the same v2 prompt, model and tool limits, and
+  compare each account's new score with its old one. About 4 reviewers, about 1.6M input-side
+  tokens at about 0.4M each.
+- **Open design choices, with my recommendation:**
+  1. Which accounts: 4 whole existing batches reshuffled among themselves (cheapest), or a sample
+     stratified by family that includes every stage-1 survivor near the stage-2 budget
+     (recommended: those are the accounts whose scores decide the reported recall).
+  2. New batch-mates: other full-test accounts (measures plain rerun plus rebatch noise), or
+     stage-1 survivors only (recommended: that is the composition the claim is about).
+  3. A rerun of the same batches unchanged as a noise floor (recommended, about 2 reviewers more):
+     without it a score change cannot be split into batch effect and rerun noise.
+  4. Criterion, fixed before scoring: for example, recompute the held-out v2 added recall with the
+     new scores swapped in and call the assumption supported if no family moves by more than a
+     declared amount, plus the share of accounts whose score moves by more than 0.1.
+- **Needed before any scoring:** a dated amendment in PREREGISTRATION.md (exploratory, further
+  use of seed 9001), acceptance tests named in this story, then the story's status line.
+- **Inputs that exist:** `results/subagent_v2/` (`manifest.json`, `batches/`, `replies/`; 41 each),
+  `results/seed9001_s0.50_n5000/llm_bundle_subagent_claude-opus-5-5_v2.json`, `second_stage.json`;
+  code in `src/triage_kit/eval/subagent_pass.py` (`assign_batches`, `prepare`, `collect`) and
+  `src/triage_kit/eval/second_stage.py`.
+- **Cost rules (owner's standing instruction):** pilot one reviewer, measure it from its
+  transcript, give the estimate, get approval, then waves of 3. See "Running a subagent pass"
+  below. One model for the whole pass.
+
 ## Where things stand (2026-11-14)
 Everything is on `main` (PR #3 merged, `ec474c0`); `main` is the remote's default branch. Reviewer
 replies, bundles and `second_stage.json` are in `results/` of the main checkout (git-ignored, so
@@ -158,20 +202,23 @@ Running a subagent pass without burning the usage limit:
   lost 15 reviewers' work. The weekly headroom cannot be read in advance.
 - Never mix models inside one pass, and never collect a pass with batches missing (they score 0.5).
 
-Open, in the order suggested:
-1. Owner reads the regenerated report, `report/index.html` in the main checkout (built at
-   `173b457`, same tree as `main`; second-stage section present).
-2. Decide whether the repo goes public for a write-up; it is private now.
+Open, in the order suggested (updated 2026-11-11):
+1. Story 23, the batch-independence check (see "Resume here").
+2. Decide whether the repo goes public for a write-up; it is private now. The round-1 review's
+   fixes are in (story 22). `report/index.html` was rebuilt at `db772cb` with `build_report`.
 3. Q13, the API pass: the only way to get a cost figure and test H6's cost part.
 4. Optional: the second stage on one more eval seed (v2 only is 41 reviewers, about 16M tokens).
-5. Housekeeping: delete remote branches `claude/ecstatic-shannon-1tsjx4` and
-   `claude/repo-review-linkedin-04cea0` (both merged), then the story worktree.
+   Only worth it if story 23 supports the method.
+5. Owner decisions: commit `reviews/`, `.gitignore` and `.ignore` or not; delete the old story
+   worktree; correct the 2026-11-14 dates in this file and `reviews/round-1/TRIAGE.md` (the work
+   was done by 2026-11-11) or leave them.
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
 
 ## Last check
-- 2026-11-11, branch claude/story22-review-fixes: `make check` exit 0, lint and typecheck clean,
-  `130 passed in 343.92s (0:05:43)`. Run with the old story worktree's venv and
-  `PYTHONPATH=src` (the main checkout has no venv). `make demo` not rerun; the report was rebuilt
-  from the existing results with `build_report`. `make confirm` and `make confirm-large` not rerun.
+- 2026-11-11, branch `claude/handoff-batch-independence` (tree of `main` `1a917f4` plus this file),
+  with the main checkout's own `.venv`: `make check` exit 0, lint and typecheck clean,
+  `130 passed in 368.86s (0:06:08)`. `make demo` not rerun since `173b457` (the report was rebuilt
+  at `db772cb` from existing results with `build_report`). `make confirm` and
+  `make confirm-large` not rerun (last: 13m08s and 38m50s, before story 20).
