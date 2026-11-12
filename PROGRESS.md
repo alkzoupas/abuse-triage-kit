@@ -80,9 +80,19 @@
   Not done: the tie implementation is unchanged (surrogate kept, as the review allowed); no
   survivor-only pass; the old "needs no training data" README sentence still stands with its
   dated correction (the reviewer's low-priority remark, not one of the four fixes).
-- [ ] 23 Batch-independence check. OPEN, NOT DONE: proposed 2026-11-11, never approved, nothing
-  written or scored. The owner chose on 2026-11-12 to publish without it. Story 21's numbers
-  therefore still assume a reviewer's score does not depend on its batch-mates. Sketch below.
+- [ ] 23 Batch-independence check (owner said go 2026-11-12 after reading the earlier posts;
+  amendment 2026-11-12; branch claude/story23-batch-independence, off story 24).
+  Outcome: a measured answer to how much `llm:v2` scores, and the held-out added recall built on
+  them, move when the deciding accounts are scored among different batch-mates, shown beside the
+  story 21 result with a rerun-noise floor.
+  Acceptance (tests/test_batch_check.py): test_pool_holds_every_surviving_family_account_and_fills_with_top_benign,
+  test_pool_is_deterministic_and_breaks_score_ties_by_seed,
+  test_pool_recall_with_original_scores_reproduces_full_ranking_recall,
+  test_pool_recall_ranks_accounts_outside_the_pool_last,
+  test_score_changes_known_answer, test_verdict_three_outcomes,
+  test_collect_refuses_when_a_reply_is_missing; then, with results,
+  test_report_shows_batch_check_beside_second_stage.
+  Status: in progress on branch `claude/story23-batch-independence`.
 - [x] 24 Pre-publication housekeeping (owner said go, 2026-11-12; branch claude/story24-prepublish).
   Outcome: the tree can be made public without dead references, future dates or private paths.
   Acceptance (document checks, no new tests): (1) `reviews/round-1/` is tracked, so the pointer in
