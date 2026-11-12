@@ -169,9 +169,9 @@
   Neither is merged or pushed. Merge and push are the owner's; so is `git pull` on local `main`, which was 2 commits behind
   `origin/main` on 2026-11-12.
 - **Environment:** `.venv` in the main checkout (Python 3.12, `uv pip install -e ".[dev]"`); plain
-  `make check` works. The old story worktree (`.claude/worktrees/repo-review-linkedin-04cea0`) is
-  not needed for its venv; its `results/` is the only second copy of the reviewer replies.
-  Deleting it is the owner's call.
+  `make check` works. The old story worktree and three merged local branches were
+  removed on 2026-11-12 at the owner's request, so the main checkout's gitignored `results/` is
+  now the only copy of the reviewer replies.
 - **Very next step (owner):** merge the story 23 branch, make the repo public, post the write-up.
   The post draft (final wording agreed 2026-11-12, kept outside the repo) states: synthetic data,
   one seed, Claude-written generator; batch-mates shifted scores but not the catches (story 23:
@@ -247,7 +247,7 @@ Open, in the order suggested (updated 2026-11-11):
 3. Q13, the API pass: the only way to get a cost figure and test H6's cost part.
 4. Optional: the second stage on one more eval seed (v2 only is 41 reviewers, about 16M tokens).
    Only worth it if story 23 supports the method.
-5. Owner decisions left: delete the old story worktree. (`reviews/`, `.gitignore`, `.ignore` and
+5. Owner decisions left: none on cleanup; the old story worktree is deleted. (`reviews/`, `.gitignore`, `.ignore` and
    the date corrections were done in story 24.)
 
 ## Suggestions (not done)
