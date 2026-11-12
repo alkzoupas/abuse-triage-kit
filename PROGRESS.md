@@ -80,7 +80,7 @@
   Not done: the tie implementation is unchanged (surrogate kept, as the review allowed); no
   survivor-only pass; the old "needs no training data" README sentence still stands with its
   dated correction (the reviewer's low-priority remark, not one of the four fixes).
-- [ ] 23 Batch-independence check (owner said go 2026-11-12 after reading the earlier posts;
+- [x] 23 Batch-independence check (owner said go 2026-11-12 after reading the earlier posts;
   amendment 2026-11-12; branch claude/story23-batch-independence, off story 24).
   Outcome: a measured answer to how much `llm:v2` scores, and the held-out added recall built on
   them, move when the deciding accounts are scored among different batch-mates, shown beside the
@@ -164,17 +164,20 @@
   ANTHROPIC_API_KEY in the environment's settings. Until then there is no cost figure.
 
 ## Resume here (2026-11-12)
-- **Branch:** `claude/story24-prepublish` off `origin/main` `8086c52`. It holds story 24 only.
-  Merge and push are the owner's; so is `git pull` on local `main`, which was 2 commits behind
+- **Branch:** `claude/story23-batch-independence` (head `75c7006` plus this note), which sits on
+  top of `claude/story24-prepublish` (`5f38de8`), so merging it brings stories 23 and 24 together.
+  Neither is merged or pushed. Merge and push are the owner's; so is `git pull` on local `main`, which was 2 commits behind
   `origin/main` on 2026-11-12.
 - **Environment:** `.venv` in the main checkout (Python 3.12, `uv pip install -e ".[dev]"`); plain
   `make check` works. The old story worktree (`.claude/worktrees/repo-review-linkedin-04cea0`) is
   not needed for its venv; its `results/` is the only second copy of the reviewer replies.
   Deleting it is the owner's call.
-- **Very next step (owner):** merge story 24, make the repo public, post the write-up. The write-up
-  should state: synthetic data, one seed, Claude-written generator; the reviewer scored the whole
-  test set in batches and batch independence is untested (story 23); no cost figure (Q13).
-- **Not done, in case work resumes:** story 23 (below), Q13, a second eval seed.
+- **Very next step (owner):** merge the story 23 branch, make the repo public, post the write-up.
+  The post draft (final wording agreed 2026-11-12, kept outside the repo) states: synthetic data,
+  one seed, Claude-written generator; batch-mates shifted scores but not the catches (story 23:
+  0.879 to 0.860 account takeover, 0.718 unchanged card testing); no cost figure (Q13).
+- **Not done, in case work resumes:** Q13, a second eval seed. Story 23 left two things untested:
+  accounts outside the pool of 188 were not rescored, and the check is one run on one seed.
 
 ### Story 23 (run 2026-11-12, supported; result in the story list above; sketch kept for the record): does a reviewer's score depend on its batch?
 Why: story 21's second-stage numbers reuse one score per account from a full-test pass (round-1
