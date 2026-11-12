@@ -697,3 +697,23 @@ is a tie block at an `llm:v2` score of 0.2 or 0.3 in every cell.
 ```prereg-amendment
 batch_check: {seed: 9001, s: 0.5, pool: 188, shuffle_seed: 20261112, rerun_batches: [0, 1], max_recall_change: 0.10}
 ```
+
+Correction, 2026-11-12, before any batch file was written or any account rescored. The
+reproduction check declared above failed on its first run: with the original scores the pool
+gave 0.880952 for account takeover against the reported 0.879121. Cause: the three held-out
+stage-1 models flag different benign accounts, so a benign account flagged in one split is
+still a survivor, and can sit in stage 2's tie block at the budget, in another. Excluding
+every benign account that *any* held-out model flags removed such accounts from the pool. The
+pool rule for benign accounts is therefore: benign test accounts that survive stage 1 in **at
+least one** held-out split (same order, same fill to 188, same seed). Stage 1 is still applied
+per cell on the full cell, so an account flagged in a cell is never ranked by stage 2 there.
+"Every batch-mate is a stage-1 survivor" now means a survivor in at least one held-out cell.
+Nothing else in the declaration changes.
+
+Second correction, 2026-11-12, same state (no batch file written, nothing rescored). One
+template crew (5 members) has more surviving members in the pool than arm B has batches, so
+four batches cannot keep group members apart, which every earlier pass did and which matters
+here (two crew-mates in one batch would show the reviewer cross-account evidence). Arm B is
+therefore **5 batches of 37 or 38 accounts** (batch size 38 passed to `assign_batches`), not 4
+of 47. Arm B' is still batches 00 and 01, now about 75 accounts. Reviewers: 7, not 6. Known
+difference added: these batches are smaller than the original 46 to 48.
