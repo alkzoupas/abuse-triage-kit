@@ -1245,6 +1245,82 @@ def _second_stage(d: dict[str, Any] | None) -> str:
     return "".join(out)
 
 
+def _signed(x: float | None) -> str:
+    return "—" if x is None else f"{x:+.3f}".replace("-", "−")
+
+
+def _pct(x: float | None) -> str:
+    return "—" if x is None else f"{100 * x:.0f}%"
+
+
+def _batch_check(d: dict[str, Any] | None) -> str:
+    """Batch-independence check (PREREGISTRATION.md, AMENDMENTS, 2026-11-12). Empty without results."""
+    if not d:
+        return ""
+    lim = d["max_recall_change"]
+    said = {
+        "supported": f"<b>Supported.</b> No family's added recall moved by more than {lim:.2f}.",
+        "headline_only": "<b>Supported for the headline families only.</b> Account takeover and "
+        f"card testing moved by no more than {lim:.2f}; at least one other family moved by more.",
+        "not_supported": "<b>Not supported.</b> Account takeover or card testing moved by more "
+        f"than {lim:.2f}.",
+    }[d["verdict"]]
+    rows = "".join(
+        f"<tr><td>{esc(f['family'])}</td><td>{f['n_pos']}</td><td>{f3(f['added_recall_original'])}</td>"
+        f"<td>{f3(f['added_recall_rebatched'])}</td><td>{_signed(f['change'])}</td></tr>"
+        for f in d["families"]
+    )
+    arms = (
+        ("original → rebatched, the whole pool", d["original_vs_rebatched"]),
+        (
+            "original → rebatched, the rerun accounts only",
+            d["original_vs_rebatched_on_rerun_accounts"],
+        ),
+        ("rebatched → rerun unchanged (noise floor)", d["rebatched_vs_rerun"]),
+    )
+    mrows = "".join(
+        f"<tr><td>{esc(name)}</td><td>{esc(g)}</td><td>{m[g]['n']}</td><td>{_pct(m[g]['share_moved'])}</td>"
+        f"<td>{f3(m[g]['mean_abs'])}</td><td>{_signed(m[g]['mean_signed'])}</td><td>{f3(m[g]['spearman'])}</td></tr>"
+        for name, m in arms
+        for g in ("family", "benign")
+    )
+    n_rerun = len(d["rerun_batches"])
+    return "".join(
+        [
+            "<h2>Does a reviewer's score depend on its batch-mates?</h2>",
+            '<p class="banner"><b>Exploratory.</b> Declared on 2026-11-12, before any rescoring, with '
+            "two corrections to the declaration made before a batch was written. Same reviewer as "
+            "above (Claude Code subagents, prompt v2), same seed.</p>",
+            "<p>The second-stage numbers above reuse one score per account from a pass over the "
+            "whole test set. That equals a reviewer shown only stage 1's survivors only if a score "
+            f"does not depend on the other accounts in its batch. Here the {d['pool']} accounts that "
+            f"decide the held-out added recall ({d['pool_family']} family accounts stage 1 let "
+            "through, and the benign accounts with the highest original scores) were scored again "
+            f"in {d['batches']} new batches made only of each other. These batches are about half "
+            "abuse, against about one in nine in the original pass: a <b>stress test</b> of batch "
+            "dependence, not the make-up of a survivor-only review, which would be mostly benign. "
+            f"{n_rerun} of the new batches were then scored once more, unchanged, by fresh "
+            "reviewers, to show how much a score moves with no change at all.</p>",
+            f"<p>{said} Added recall below is computed with stage 2 ranking the pool only; with the "
+            "original scores that reproduces the figures above exactly. Test accounts outside the "
+            "pool were <b>not rescored</b> and are assumed to stay below the budget.</p>",
+            "<table><tr><th>family (held out)</th><th>test accounts</th><th>added recall, original "
+            "scores</th><th>added recall, rebatched scores</th><th>change</th></tr>",
+            rows,
+            "</table>",
+            f'<p>How far individual scores moved. "Moved" is a change of more than '
+            f"{d['moved_threshold']:.1f}. A batch effect would show as the first rows clearly above "
+            "the noise floor. The original pass's first 34 batches were read over more turns "
+            "(2026-11-11 procedure change) and its batches were larger, so the first rows also "
+            "contain those differences.</p>",
+            "<table><tr><th>comparison</th><th>accounts</th><th>n</th><th>moved</th><th>mean "
+            "absolute change</th><th>mean change</th><th>Spearman</th></tr>",
+            mrows,
+            "</table>",
+        ]
+    )
+
+
 def build_report(
     results_root: Path, prereg_path: Path, out_path: Path, commit: str = "unknown"
 ) -> Path:
@@ -1262,6 +1338,8 @@ def build_report(
         bundles.append(json.loads(p.read_text()))
     ss_path = results_root / primary["run"] / "second_stage.json"
     second = json.loads(ss_path.read_text()) if ss_path.exists() else None
+    bc_path = results_root / primary["run"] / "batch_check.json"
+    batch = json.loads(bc_path.read_text()) if bc_path.exists() else None
     body = "".join(
         [
             f"<h1>abuse-triage-kit report</h1><p class=sub>Generated by <code>make demo</code> at commit "
@@ -1286,6 +1364,7 @@ def build_report(
             _replication(prereg, reps, primary, pf),
             _bundles(bundles, primary),
             _second_stage(second),
+            _batch_check(batch),
             CANT_TELL,
         ]
     )

@@ -92,7 +92,14 @@
   test_score_changes_known_answer, test_verdict_three_outcomes,
   test_collect_refuses_when_a_reply_is_missing; then, with results,
   test_report_shows_batch_check_beside_second_stage.
-  Status: in progress on branch `claude/story23-batch-independence`.
+  Status: run and collected 2026-11-12 on branch `claude/story23-batch-independence` (7 reviewers,
+  all `claude-opus-5-5`, no reply missing). Verdict by the fixed criterion: **supported**. Added
+  recall, original to rebatched: ato 0.879 to 0.860, review_ring 0.263 to 0.316, promo_abuse 0.120
+  to 0.139, scraping 0.231 and card_testing 0.718 unchanged, template_operator 0.118 to 0.147
+  (largest change 0.053, limit 0.10). Scores did move: benign mean change -0.090, 34% moved by
+  more than 0.1; family -0.037, 14%; unchanged rerun (76 accounts) 1% moved, mean absolute 0.014.
+  Result file `results/seed9001_s0.50_n5000/batch_check.json` (gitignored, like all results);
+  README caveat updated. `report/index.html` not rebuilt in this session.
 - [x] 24 Pre-publication housekeeping (owner said go, 2026-11-12; branch claude/story24-prepublish).
   Outcome: the tree can be made public without dead references, future dates or private paths.
   Acceptance (document checks, no new tests): (1) `reviews/round-1/` is tracked, so the pointer in
@@ -169,7 +176,7 @@
   test set in batches and batch independence is untested (story 23); no cost figure (Q13).
 - **Not done, in case work resumes:** story 23 (below), Q13, a second eval seed.
 
-### Story 23 (open, not approved, not run): does a reviewer's score depend on its batch?
+### Story 23 (run 2026-11-12, supported; result in the story list above; sketch kept for the record): does a reviewer's score depend on its batch?
 Why: story 21's second-stage numbers reuse one score per account from a full-test pass (round-1
 review, finding 1). They describe a survivor-only reviewer only if a score does not depend on
 the other accounts in the batch. The reviewer called this the riskiest assumption.
@@ -230,7 +237,8 @@ Running a subagent pass without burning the usage limit:
 - Never mix models inside one pass, and never collect a pass with batches missing (they score 0.5).
 
 Open, in the order suggested (updated 2026-11-11):
-1. Story 23, the batch-independence check (see "Resume here").
+1. Story 23 is done on its branch (supported); owner to merge. The write-up can now say the
+   batch assumption was checked, with the score-shift caveat, instead of "untested".
 2. Decide whether the repo goes public for a write-up; it is private now. The round-1 review's
    fixes are in (story 22). `report/index.html` was rebuilt at `db772cb` with `build_report`.
 3. Q13, the API pass: the only way to get a cost figure and test H6's cost part.

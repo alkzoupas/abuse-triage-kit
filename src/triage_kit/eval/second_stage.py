@@ -27,7 +27,7 @@ import argparse
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import numpy as np
 import numpy.typing as npt
@@ -37,10 +37,10 @@ from triage_kit.detectors.features import FEATURE_NAMES, feature_table
 from triage_kit.detectors.rules import RulesDetector
 from triage_kit.eval.metrics import expansion_factor, percentile_interval
 from triage_kit.eval.run_eval import RunConfig
-from triage_kit.eval.splits import HELDOUT_FOLDS, cell_ids, make_splits, unit_of
+from triage_kit.eval.splits import HELDOUT_FOLDS, Split, cell_ids, make_splits, unit_of
 from triage_kit.eval.truth import load_truth
 from triage_kit.generator import FAMILIES, GeneratorConfig, generate, write_generated
-from triage_kit.schema import read_dataset
+from triage_kit.schema import AccountEvents, read_dataset
 
 STAGE1 = "gb+sim"
 Arr = npt.NDArray[np.float64]
@@ -174,7 +174,20 @@ def bundle_path(results_dir: Path, model: str, version: str) -> Path:
     return results_dir / f"llm_bundle_subagent_{model.replace('/', '_')}{suffix}.json"
 
 
-def run(seed: int, s: float, n: int, model: str, n_boot: int = 1000) -> Path:
+class Stage1(NamedTuple):
+    """The run's data and `gb+sim` scores for every test account, per split."""
+
+    cfg: RunConfig
+    data: list[AccountEvents]
+    labels: Mapping[str, Mapping[str, Any]]
+    splits: dict[str, Split]
+    test_ids: list[str]
+    scores: dict[str, dict[str, float]]
+    X: npt.NDArray[Any]
+    te_idx: npt.NDArray[Any]
+
+
+def fit_stage1(seed: int, s: float, n: int, n_boot: int = 1000) -> Stage1:
     cfg = RunConfig(seed=seed, s=s, n_accounts=n, n_boot=n_boot)
     data_dir = cfg.data_root / cfg.name
     if not (data_dir / "events.jsonl").exists():
@@ -193,6 +206,17 @@ def run(seed: int, s: float, n: int, model: str, n_boot: int = 1000) -> Path:
         y_tr = np.array([int(labels[a]["is_abuse"]) for a in sorted(sp.train_ids)])
         m = FeatureModel(STAGE1).fit_table(X[tr_idx], y_tr, names)
         stage1[name] = dict(zip(test_ids, m.predict_table(X[te_idx]).tolist(), strict=True))
+    return Stage1(cfg, data, labels, splits, test_ids, stage1, X, te_idx)
+
+
+def heldout_split_of() -> dict[str, str]:
+    """The held-out split that hides each family."""
+    return {fam: f"heldout_{i}" for i, fold in enumerate(HELDOUT_FOLDS, 1) for fam in fold}
+
+
+def run(seed: int, s: float, n: int, model: str, n_boot: int = 1000) -> Path:
+    cfg, data, labels, splits, test_ids, stage1, X, te_idx = fit_stage1(seed, s, n, n_boot)
+    pos = {ae.account_id: i for i, ae in enumerate(data)}
     rules = RulesDetector(seen_families=FAMILIES)  # every rule on, whatever the fold
     test_data = [data[pos[a]] for a in test_ids]
     rules_all = dict(
@@ -206,7 +230,7 @@ def run(seed: int, s: float, n: int, model: str, n_boot: int = 1000) -> Path:
         if p.exists():
             llm[f"llm:{version}"] = json.loads(p.read_text())["scores"]
 
-    heldout_of = {fam: f"heldout_{i}" for i, fold in enumerate(HELDOUT_FOLDS, 1) for fam in fold}
+    heldout_of = heldout_split_of()
     cells = []
     for cond in ("heldout", "in_family"):
         for fi, fam in enumerate(FAMILIES):

@@ -195,7 +195,16 @@ below). Synthetic data only.
   test accounts once, in mixed batches that included several families and the accounts stage 1
   goes on to flag; stage 1's flags are removed afterwards, in the ranking. That equals a
   reviewer shown only stage 1's survivors only if a score does not depend on the other accounts
-  in its batch, which was not tested. It does not measure reduced reviewer work or a deployed
+  in its batch. That was checked afterwards (exploratory, declared 2026-11-12 in
+  `PREREGISTRATION.md`, one run): the 188 accounts that decide the held-out added recall were
+  rescored in 5 new batches made only of each other (about half abuse, a stress test). Added
+  recall moved by at most 0.053 in any family (account takeover 0.879 to 0.860, card testing
+  0.718 unchanged), inside the 0.10 limit fixed in advance. Individual scores did move: benign
+  accounts fell by 0.090 on average and 34% moved by more than 0.1, against 0% (mean absolute
+  change 0.014) when two of the new batches were rescored unchanged. So scores are not
+  independent of the batch (or of the smaller batches and the read procedure, which also
+  differed); the flags at the budget mostly were. Accounts outside the pool were not rescored.
+  It does not measure reduced reviewer work or a deployed
   routed review. The intervals resample accounts with the scores held fixed: they are
   conditional on this split, these fitted models, this batch assignment and these replies, and
   do not cover a rerun of the reviewer or a rebatching. Ties at a budget are taken fractionally,
