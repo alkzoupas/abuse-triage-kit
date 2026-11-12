@@ -99,7 +99,7 @@
   (largest change 0.053, limit 0.10). Scores did move: benign mean change -0.090, 34% moved by
   more than 0.1; family -0.037, 14%; unchanged rerun (76 accounts) 1% moved, mean absolute 0.014.
   Result file `results/seed9001_s0.50_n5000/batch_check.json` (gitignored, like all results);
-  README caveat updated. `report/index.html` not rebuilt in this session.
+  README caveat updated. `report/index.html` rebuilt at `3d88167` with `build_report` (gitignored).
 - [x] 24 Pre-publication housekeeping (owner said go, 2026-11-12; branch claude/story24-prepublish).
   Outcome: the tree can be made public without dead references, future dates or private paths.
   Acceptance (document checks, no new tests): (1) `reviews/round-1/` is tracked, so the pointer in
