@@ -54,7 +54,7 @@
   rules-all-on and more-stage-1. Acceptance: tests/test_second_stage.py (known-answer two-stage
   recall, tie rule, random expectation, bootstrap determinism), tests/test_llm.py (v2 prompt names
   no abuse type; v1 byte-identical), tests/test_demo.py (report section appears when both bundles
-  exist). Status: done 2026-11-14.
+  exist). Status: done 2026-11-11.
   Result (seed 9001 s=0.5, claude-opus-5-5 subagents, v2 1,922/1,922 parsed, v1 1 unparsed):
   held out, llm:v2 added recall ato 0.879, card 0.718, ring 0.263, scraping 0.231, promo 0.120,
   template 0.118. Expectations: (a) HIT 4/6 (criterion), (b) MISS 3/6, (c) HIT 5/6 (largest v1
@@ -80,6 +80,38 @@
   Not done: the tie implementation is unchanged (surrogate kept, as the review allowed); no
   survivor-only pass; the old "needs no training data" README sentence still stands with its
   dated correction (the reviewer's low-priority remark, not one of the four fixes).
+- [x] 23 Batch-independence check (owner said go 2026-11-12 after reading the earlier posts;
+  amendment 2026-11-12; branch claude/story23-batch-independence, off story 24).
+  Outcome: a measured answer to how much `llm:v2` scores, and the held-out added recall built on
+  them, move when the deciding accounts are scored among different batch-mates, shown beside the
+  story 21 result with a rerun-noise floor.
+  Acceptance (tests/test_batch_check.py): test_pool_holds_every_surviving_family_account_and_fills_with_top_benign,
+  test_pool_is_deterministic_and_breaks_score_ties_by_seed,
+  test_pool_recall_with_original_scores_reproduces_full_ranking_recall,
+  test_pool_recall_ranks_accounts_outside_the_pool_last,
+  test_score_changes_known_answer, test_verdict_three_outcomes,
+  test_collect_refuses_when_a_reply_is_missing; then, with results,
+  test_report_shows_batch_check_beside_second_stage.
+  Status: run and collected 2026-11-12 on branch `claude/story23-batch-independence` (7 reviewers,
+  all `claude-opus-5-5`, no reply missing). Verdict by the fixed criterion: **supported**. Added
+  recall, original to rebatched: ato 0.879 to 0.860, review_ring 0.263 to 0.316, promo_abuse 0.120
+  to 0.139, scraping 0.231 and card_testing 0.718 unchanged, template_operator 0.118 to 0.147
+  (largest change 0.053, limit 0.10). Scores did move: benign mean change -0.090, 34% moved by
+  more than 0.1; family -0.037, 14%; unchanged rerun (76 accounts) 1% moved, mean absolute 0.014.
+  Result file `results/seed9001_s0.50_n5000/batch_check.json` (gitignored, like all results);
+  README caveat updated. `report/index.html` rebuilt at `3d88167` with `build_report` (gitignored).
+- [x] 24 Pre-publication housekeeping (owner said go, 2026-11-12; branch claude/story24-prepublish).
+  Outcome: the tree can be made public without dead references, future dates or private paths.
+  Acceptance (document checks, no new tests): (1) `reviews/round-1/` is tracked, so the pointer in
+  PREREGISTRATION.md resolves; (2) no date later than 2026-11-12 in PROGRESS.md or
+  `reviews/round-1/TRIAGE.md`; (3) `gitleaks git` over the history and `gitleaks dir` over the tree
+  report no leaks; (4) no absolute home path in a tracked file; (5) stories 23 and Q13 read as
+  open; (6) `make check` exit 0. Changes: `reviews/`, `.gitignore` (ignores `/graft/`) and
+  `.ignore` committed; the dates that were two days in the future corrected to 2026-11-11 (commit dates of `173b457`
+  and the review files); the reviewer's scratch script `audit_openai.py` now finds the repo root
+  from its own location (it had an absolute checkout path; rerun after the edit: exit 0, same summary line as the review records).
+  Not done: local `main` was not synced (the git guard leaves pulls on `main` to the owner);
+  repo visibility is unchanged (private).
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
@@ -127,22 +159,27 @@
 - Q11 answered (check widening on dev seeds at 20k): widening adequate, see story 18.
 - Q12 answered (switch to null PR-AUC): done, story 19. The primary eval seed now shows FAIL on one
   below-chance cell; reported as is.
-- Q13 The subagent pass is batched and inside Claude Code. An API pass (one account per call, real
-  token counts) would test H6 properly and give a cost; it needs an ANTHROPIC_API_KEY in the
-  environment's settings. Worth doing once a key is available?
+- Q13 OPEN, NOT DONE. The subagent pass is batched and inside Claude Code. An API pass (one
+  account per call, real token counts) would test H6 properly and give a cost; it needs an
+  ANTHROPIC_API_KEY in the environment's settings. Until then there is no cost figure.
 
-## Resume here (2026-11-11)
-- **Branch:** `claude/handoff-batch-independence` off `main` `1a917f4`. It holds only this
-  PROGRESS update. Uncommitted and the owner's to decide: `.gitignore` (ignores `/graft/`),
-  `.ignore`, `reviews/` (PREREGISTRATION.md's 2026-11-11 clarification points at `reviews/round-1/`).
-- **Environment:** `.venv` now exists in the main checkout (Python 3.12, `uv pip install -e ".[dev]"`),
-  so plain `make check` works. The old story worktree
-  (`.claude/worktrees/repo-review-linkedin-04cea0`) is no longer needed for its venv; its
-  `results/` is the only second copy of the reviewer replies. Deleting it is the owner's call.
-- **Very next step:** story 23 below. Nothing is written or scored for it yet. First get the
-  owner's approval of the design and criterion, then write the amendment, then tests, then pilot.
+## Resume here (2026-11-12)
+- **Branch:** `claude/story23-batch-independence` (head `75c7006` plus this note), which sits on
+  top of `claude/story24-prepublish` (`5f38de8`), so merging it brings stories 23 and 24 together.
+  Neither is merged or pushed. Merge and push are the owner's; so is `git pull` on local `main`, which was 2 commits behind
+  `origin/main` on 2026-11-12.
+- **Environment:** `.venv` in the main checkout (Python 3.12, `uv pip install -e ".[dev]"`); plain
+  `make check` works. The old story worktree and three merged local branches were
+  removed on 2026-11-12 at the owner's request, so the main checkout's gitignored `results/` is
+  now the only copy of the reviewer replies.
+- **Very next step (owner):** merge the story 23 branch, make the repo public, post the write-up.
+  The post draft (final wording agreed 2026-11-12, kept outside the repo) states: synthetic data,
+  one seed, Claude-written generator; batch-mates shifted scores but not the catches (story 23:
+  0.879 to 0.860 account takeover, 0.718 unchanged card testing); no cost figure (Q13).
+- **Not done, in case work resumes:** Q13, a second eval seed. Story 23 left two things untested:
+  accounts outside the pool of 188 were not rescored, and the check is one run on one seed.
 
-### Story 23 (proposed, not approved): does a reviewer's score depend on its batch?
+### Story 23 (run 2026-11-12, supported; result in the story list above; sketch kept for the record): does a reviewer's score depend on its batch?
 Why: story 21's second-stage numbers reuse one score per account from a full-test pass (round-1
 review, finding 1). They describe a survivor-only reviewer only if a score does not depend on
 the other accounts in the batch. The reviewer called this the riskiest assumption.
@@ -174,7 +211,7 @@ the other accounts in the batch. The reviewer called this the riskiest assumptio
   transcript, give the estimate, get approval, then waves of 3. See "Running a subagent pass"
   below. One model for the whole pass.
 
-## Where things stand (2026-11-14)
+## Where things stand (2026-11-11)
 Everything is on `main` (PR #3 merged, `ec474c0`); `main` is the remote's default branch. Reviewer
 replies, bundles and `second_stage.json` are in `results/` of the main checkout (git-ignored, so
 local only; the only other copy is the old story worktree).
@@ -203,22 +240,23 @@ Running a subagent pass without burning the usage limit:
 - Never mix models inside one pass, and never collect a pass with batches missing (they score 0.5).
 
 Open, in the order suggested (updated 2026-11-11):
-1. Story 23, the batch-independence check (see "Resume here").
+1. Story 23 is done on its branch (supported); owner to merge. The write-up can now say the
+   batch assumption was checked, with the score-shift caveat, instead of "untested".
 2. Decide whether the repo goes public for a write-up; it is private now. The round-1 review's
    fixes are in (story 22). `report/index.html` was rebuilt at `db772cb` with `build_report`.
 3. Q13, the API pass: the only way to get a cost figure and test H6's cost part.
 4. Optional: the second stage on one more eval seed (v2 only is 41 reviewers, about 16M tokens).
    Only worth it if story 23 supports the method.
-5. Owner decisions: commit `reviews/`, `.gitignore` and `.ignore` or not; delete the old story
-   worktree; correct the 2026-11-14 dates in this file and `reviews/round-1/TRIAGE.md` (the work
-   was done by 2026-11-11) or leave them.
+5. Owner decisions left: none on cleanup; the old story worktree is deleted. (`reviews/`, `.gitignore`, `.ignore` and
+   the date corrections were done in story 24.)
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
 
 ## Last check
-- 2026-11-11, branch `claude/handoff-batch-independence` (tree of `main` `1a917f4` plus this file),
-  with the main checkout's own `.venv`: `make check` exit 0, lint and typecheck clean,
-  `130 passed in 368.86s (0:06:08)`. `make demo` not rerun since `173b457` (the report was rebuilt
-  at `db772cb` from existing results with `build_report`). `make confirm` and
-  `make confirm-large` not rerun (last: 13m08s and 38m50s, before story 20).
+- 2026-11-12, branch `claude/story24-prepublish` (tree of `origin/main` `8086c52` plus story 24),
+  main checkout's `.venv`: `make check` exit 0, lint and typecheck clean,
+  `130 passed in 313.66s (0:05:13)`. `gitleaks git` (59 commits) and `gitleaks dir reviews`:
+  no leaks found. `make demo` not rerun since `173b457` (the report was rebuilt at `db772cb`
+  from existing results with `build_report`). `make confirm` and `make confirm-large` not rerun
+  (last: 13m08s and 38m50s, before story 20).

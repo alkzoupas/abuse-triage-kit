@@ -1,0 +1,59 @@
+# Review: evaluation report and LLM evidence (OpenAI GPT-6.1-sol, design)
+
+Verdict: FIX-THEN-SHIP
+
+## Context seen
+
+First pass, before deferred author material. Target HEAD verified as `2162af133209a1c9172b0f6cbdcf4e1b1c3e3fe5`; there is no proposed diff. The packet identifies the generated report as built at `173b457` from the same tree. I reviewed README results, preregistration and amendments, the generated HTML's LLM/second-stage sections, the named evaluation and reviewer implementations, relevant report rendering, and tests covering prompts, parsing, batching, and second-stage arithmetic. I audited the two local manifests, all 82 reply files, their 82 corresponding batch account lists, the two score bundles, and `second_stage.json`. I inspected selected metrics JSON fields rather than reading the whole metrics file.
+
+Beyond the packet, I saw the supplied shared AGENTS instructions and environment context, tool/developer instructions (including the injected graft repository map and Trail banner), the adversarial-review skill, the orchestration discovery stub, and `orca skills get orchestration`. No memory recall or earlier verdict was supplied. `git status --short` exposed only these path/status entries: modified `.gitignore`, untracked `.ignore`, untracked `reviews/`; I did not open their contents. An attempted `cat AGENTS.md` established that the repository-root file is absent. No prohibited status/handoff/progress file, other review, `.claude` material, or commit narrative was opened. The root AGENTS read was bundled with README/preregistration and exited 1 because AGENTS was absent; that was not a failed evaluation check.
+
+## Expected behaviour
+
+The owner's request is an adversarial review of the report and findings. The coordinator specifically asks whether claims about the subagent pass and second-stage recall follow from their declared method and local evidence. The preregistration governs scoring: keep exploratory amendments separate from original hypotheses; compare the declared scorers at k=50; account for group dependence; report misses and missing replies honestly; distinguish synthetic, batched subscription results from an API experiment; and disclose what the experiment actually establishes.
+
+The declared second-stage criterion is an interval above zero for v2 minus random in at least four held-out families. Passing that rule should be reported faithfully without expanding it into evidence of a deployed cascade, prompt equivalence, or reproducibility that was not measured.
+
+## Findings (most severe first)
+
+1. **High — The report describes a survivor-only reviewer experiment, but the LLM actually saw the entire mixed test population before stage-1 filtering.** — `src/triage_kit/report.py:1115`, `src/triage_kit/eval/subagent_pass.py:118`, `src/triage_kit/eval/second_stage.py:185`, `PREREGISTRATION.md:550`.
+
+   Failure: all 1,922 test accounts are assigned to 41 batches, with multiple abuse families and accounts that stage 1 will flag included in the model's context; the same resulting scores are then reused for every family and both conditions. Only the downstream ranking calculation removes stage-1 selections (`second_stage.py:65–67`, `:195–200`). Thus “Each second stage sees only what stage 1 allowed” is false as a description of the LLM inputs. Removing already-scored accounts is equivalent to a survivor-only pass only if scores are independent of batch composition; a wrapper asking for independent judgement does not establish that property for a model attending to 46–47 accounts together. No observed score contamination is established here, but the claimed experiment was not performed.
+
+   Fix: describe the existing result as a retrospective cascade calculation using fixed scores from a full-test batched review. Explain that survivor-only batches may change scores and that the experiment does not measure reduced LLM scoring work or an actual routed-review deployment. Keep the numerical criterion result. If an actual survivor-only claim is wanted, validate it separately with batches formed after routing; do not silently reinterpret or overwrite the present run.
+
+2. **Medium — The “95%” intervals are conditional on one set of batch-generated scores, while the report leaves that conditioning implicit.** — `src/triage_kit/eval/second_stage.py:106`, `:111–125`, `src/triage_kit/report.py:1120`, `src/triage_kit/eval/llm_bundle.py:38–40`.
+
+   Failure: each bootstrap replicate resamples truth units and reuses the exact same score vectors. A common reviewer/batch response can move the scores of multiple unrelated accounts together, yet those accounts are resampled as unrelated units; review-ring groups are deliberately spread across batches, so the truth-group clustering does not capture reviewer-batch dependence. Rebatching, rerunning the reviewer, and the mid-pass read-procedure change are absent from these intervals. Consequently a reader treating the four-family criterion as repeatable reviewer performance is assigning uncertainty coverage the method has not measured. The existing “one seed/no exact reproducibility” caveats are useful but do not explain what the intervals condition on. I cannot establish that the current four-family outcome would change.
+
+   Fix: explicitly label the intervals as resampling uncertainty conditional on this fixed dataset split, fitted models, batch assignment, and realized replies. Limit the hit claim to that declared calculation. For broader inference, collect independent reviewer repetitions/rebatchings on fresh data and account for both truth-group and reviewer-batch dependence; merely widening for the number of abuse groups does not establish that coverage.
+
+3. **Medium — Fractionally composing the stages is not generally the expected result of sequential random tie-breaking.** — `src/triage_kit/eval/second_stage.py:65–67`, `:41–43`, `PREREGISTRATION.md:563–564`, `tests/test_second_stage.py:58`.
+
+   Failure (exact hand calculation): let accounts A, B, C have stage-1 scores `(1,1,0)`, stage-2 scores `(1,0,1)`, labels `(1,0,0)`, weights all one, and k=1. Actual stage 1 removes A or B with equal probability. If it removes A, stage 2 catches zero abuse; if it removes B, stage 2 ties A and C and catches A with probability 1/2. Expected added recall is therefore 1/4. The implementation leaves weights `(1/2,1/2,1)`, then fractionally takes 1 of the 3/2 weight tied at stage-2 score 1, catching `(1/2)/(3/2)=1/3` abuse. Allocating against the expected residual pool is not the same as averaging over residual pools. Existing tests cover single-stage ties and a two-stage example without a stage-1 boundary tie, so they do not demonstrate the claimed equivalence.
+
+   Fix: either define and label the result as a fractional-weight surrogate, dropping the general sequential-expectation interpretation, or average over actual stage-1 tie resolutions before stage-2 allocation (exactly where feasible, otherwise with separately reported Monte Carlo uncertainty). Add this counterexample when implementation changes are authorized. The reported point estimates' affectedness is unverified: the supplied second-stage JSON does not retain the stage-1 score vectors or boundary ties. This is not evidence that the current four-family criterion is wrong.
+
+4. **Medium — The report omits the promised stage-2 precision, hiding a large part of the practical tradeoff.** — `PREREGISTRATION.md:561–562`, `src/triage_kit/eval/second_stage.py:146`, `src/triage_kit/report.py:1125–1140`, `README.md:181–194`.
+
+   Failure: the method promises to report stage-2 precision and stores it in JSON, but the public second-stage table displays added recall only. In the current held-out v2 results, precision is 0.10 for review ring, 0.12 for promo abuse, 0.12 for scraping, and 0.08 for template operator: only 4–6 abusive accounts in each batch of 50 investigator flags. These are genuine recall gains, but the headline that a reviewer “recovers much” does not show the associated investigator burden. Even the exact declared four-family success includes promo abuse and scraping at 12% precision. Account takeover and card testing are substantially stronger (approximately 74% and 56%).
+
+   Fix: add stage-2 precision or expected true/false flags beside added recall, at least for the primary scorer, and clarify that budgets and prevalence are per synthetic family-vs-benign cell. No rerun is needed; values already exist. This does not invalidate a recall-only criterion that was explicitly declared.
+
+## Evidence that does hold
+
+The saved data support the published criterion arithmetic. The read-only audit found two complete, unique 1,922-account manifests with 41 batches each (36 batches of 47, five of 46). Every batch's account IDs match its manifest. Raw replies reproduce all 3,844 bundled scores after the specified default and rounding. There are no duplicate accepted account replies; v1 batch 16 lacks account `a0af712178c9`, defaulted to 0.5, and v2 has none missing. Both bundles disclose these counts correctly.
+
+The second-stage JSON scores expectations (a–d) as 4/6, 3/6, 5/6, 6/6, with template operator the smallest v2 gain for (e), agreeing with README and report. The criterion's two non-passing families are review ring and template operator. The narrative acknowledges that v1's 5/6 is weak, includes exact ties, and does not conceal the (b)/(e) misses. The generic v2 instructions omit the six-type list; v1 includes it. The original held-out comparison's cue advantage is explicitly corrected, though replacing the old causal sentence in README would be clearer than retaining it before the correction.
+
+## Single riskiest decision and settling evidence
+
+The riskiest decision is treating a full-population batched LLM score as an account-local score that can be reused unchanged after stage-1 routing. That assumption connects the observed offline rankings to the claimed two-stage reviewer workflow. A frozen, fresh-data comparison of full-population batches against actual survivor-only batches, with independent batch/reviewer repetitions and paired downstream recall/precision differences, would directly test it. The simpler defensible alternative today is to narrow the description to the retrospective calculation already performed. There is no deployed change to roll back; preserve current artifacts and declared outcomes when improving the description or designing a follow-up.
+
+## Not checked
+
+No make, pytest, evaluation, network, API call, or data/report/result mutation was run. Source/tests were inspected rather than executed, as instructed. Stage-1 fitting, bootstrap realizations, JSON AP computation, and generator isolation were not rerun. I did not independently authenticate the requested/reported model or audit subagent tool-access transcripts; the bundles record a supplied model name, not attestation. Original November 3 per-account replies are unavailable per the amendment, so their historical PR-AUC and repeatability comparison cannot be reconstructed from the supplied repeat passes. I did not investigate unrelated template-feature/calibration findings in depth. Findings here do not assert cheating, contamination, or a failed declared numerical criterion.
+
+Allowed analysis command: `python3 -I reviews/round-1/scratch/audit_openai.py`; exit code **0**. Runner summary: `AUDIT COMPLETE: 2 manifests, 82 reply files and 3844 bundled scores checked; expectation counts 4/3/5/6, weakest template_operator.` These are artifact audit counts, not a test-suite result. Other read-only inspection commands returned exit 0 except the missing-root-AGENTS read described above. No test pass or test count is claimed.
+
+Awaiting the deferred material before reconciliation. First-pass findings and verdict above will remain unchanged; reconciliation will be appended.

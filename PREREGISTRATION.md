@@ -640,3 +640,80 @@ corrections to how the method is described:
 
 `second_stage.json` was regenerated to add the per-cell `stage1_boundary_tie` field; every
 other value is identical to the file it replaces.
+
+### 2026-11-12 — does a reviewer's score depend on its batch-mates? (exploratory, further use of seed 9001)
+
+Requested by the owner on 2026-11-12, to test the assumption the 2026-11-11 clarification
+names: the second-stage numbers reuse one score per account from a full-test pass, which
+equals a survivor-only review only if a score does not depend on the other accounts in its
+batch. Declared before any code for it exists and before any account is rescored. Exploratory.
+Nothing in the 2026-11-09 analysis is rescored or replaced; this is reported beside it.
+
+Structure looked at before writing this, from existing scores and labels only: held out, 102
+family accounts survive stage 1 across the six cells (account takeover 37, card testing 30,
+promo abuse 11, review ring 9, template operator 8, scraping 7); the stage-2 budget boundary
+is a tie block at an `llm:v2` score of 0.2 or 0.3 in every cell.
+
+- **Data, prompt, model:** eval seed 9001, s = 0.5, standard mode; prompt v2; fresh
+  `general-purpose` Claude Code subagents, model requested `opus` (the reported model is
+  recorded), the same wrapper text and the 2026-11-11 read procedure (500-line pages in one
+  message, then one Write; only Read on the batch file and Write on the reply file).
+- **Accounts rescored (the pool), 188:** every family account that stage 1 (`gb+sim`, top 50)
+  does not flag in its own held-out cell (102), plus benign test accounts that no held-out
+  stage-1 model flags, taken in descending order of their original `llm:v2` score until the
+  pool has 188, ties in that order broken by a fixed seeded permutation (seed 20261112). These
+  are the accounts that decide the reported held-out added recall: the ones stage 2 could
+  catch and the benign accounts that compete with them for its 50 flags.
+- **Rebatch arm (B), 4 batches of 47:** the pool, assigned with the existing `assign_batches`
+  (group members in different batches) and shuffle seed 20261112. Every batch-mate is therefore
+  a stage-1 survivor, and the batches are far denser in abuse than the originals (about 54%
+  against about 11%). This is a stress test of batch dependence in the direction opposite to a
+  survivor-only cell (about 2% abuse); it is not that composition.
+- **Rerun arm (B'), 2 batches:** batches 00 and 01 of arm B, given unchanged to two more fresh
+  reviewers. B against B' on the same 94 accounts is plain rerun noise.
+- **Primary quantity:** for each held-out cell, `llm:v2` added recall with stage 2 ranking only
+  the pool (stage 1 computed on the full cell as before; accounts outside the pool rank last),
+  once with the original scores and once with arm B's scores. With the original scores this
+  must reproduce the reported added recall in all six cells; if it does not, the pool rule is
+  wrong and nothing is scored until it is fixed here. Known limit: test accounts outside the
+  pool (all benign or flagged by stage 1) are not rescored and are assumed to stay below the
+  budget.
+- **Criterion, fixed now:** let d be the absolute change in added recall from original to arm B.
+  *Supported*: d <= 0.10 in all six families. *Supported for the headline families only*:
+  d <= 0.10 for account takeover and card testing but not all six. *Not supported*: otherwise.
+- **Also reported, no pass or fail:** for original against B (188 accounts) and for B against
+  B' (94 accounts), split into family and benign accounts: the share of accounts whose score
+  moves by more than 0.1, the mean absolute and mean signed change, and the Spearman
+  correlation. A batch effect shows as original-to-B movement clearly above B-to-B' movement.
+- **Known differences that are not batch composition:** original batches 00 to 33 were read
+  with the earlier multi-turn procedure, so original against B also contains that change and
+  one rerun; B against B' contains only the rerun.
+- **Cost procedure (owner's standing rule):** one pilot reviewer (arm B batch 00), its token use
+  measured from its transcript and the estimate for the other five shown to the owner; the
+  rest run in waves of three after approval. The pilot's reply is kept if the procedure does
+  not change. No reply is parsed or scored until all six exist; a missing reply stops the
+  collection instead of scoring 0.5. One model for the whole check.
+
+```prereg-amendment
+batch_check: {seed: 9001, s: 0.5, pool: 188, shuffle_seed: 20261112, rerun_batches: [0, 1], max_recall_change: 0.10}
+```
+
+Correction, 2026-11-12, before any batch file was written or any account rescored. The
+reproduction check declared above failed on its first run: with the original scores the pool
+gave 0.880952 for account takeover against the reported 0.879121. Cause: the three held-out
+stage-1 models flag different benign accounts, so a benign account flagged in one split is
+still a survivor, and can sit in stage 2's tie block at the budget, in another. Excluding
+every benign account that *any* held-out model flags removed such accounts from the pool. The
+pool rule for benign accounts is therefore: benign test accounts that survive stage 1 in **at
+least one** held-out split (same order, same fill to 188, same seed). Stage 1 is still applied
+per cell on the full cell, so an account flagged in a cell is never ranked by stage 2 there.
+"Every batch-mate is a stage-1 survivor" now means a survivor in at least one held-out cell.
+Nothing else in the declaration changes.
+
+Second correction, 2026-11-12, same state (no batch file written, nothing rescored). One
+template crew (5 members) has more surviving members in the pool than arm B has batches, so
+four batches cannot keep group members apart, which every earlier pass did and which matters
+here (two crew-mates in one batch would show the reviewer cross-account evidence). Arm B is
+therefore **5 batches of 37 or 38 accounts** (batch size 38 passed to `assign_batches`), not 4
+of 47. Arm B' is still batches 00 and 01, now about 75 accounts. Reviewers: 7, not 6. Known
+difference added: these batches are smaller than the original 46 to 48.
