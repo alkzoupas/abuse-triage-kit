@@ -1,0 +1,959 @@
+{
+ "batches": 5,
+ "families": [
+  {
+   "added_recall_original": 0.879121,
+   "added_recall_rebatched": 0.859524,
+   "change": -0.019597,
+   "family": "ato",
+   "n_pos": 42
+  },
+  {
+   "added_recall_original": 0.263158,
+   "added_recall_rebatched": 0.315789,
+   "change": 0.052632,
+   "family": "review_ring",
+   "n_pos": 19
+  },
+  {
+   "added_recall_original": 0.12,
+   "added_recall_rebatched": 0.139259,
+   "change": 0.019259,
+   "family": "promo_abuse",
+   "n_pos": 50
+  },
+  {
+   "added_recall_original": 0.230769,
+   "added_recall_rebatched": 0.230769,
+   "change": 0.0,
+   "family": "scraping",
+   "n_pos": 26
+  },
+  {
+   "added_recall_original": 0.717949,
+   "added_recall_rebatched": 0.717949,
+   "change": 0.0,
+   "family": "card_testing",
+   "n_pos": 39
+  },
+  {
+   "added_recall_original": 0.117647,
+   "added_recall_rebatched": 0.147059,
+   "change": 0.029412,
+   "family": "template_operator",
+   "n_pos": 34
+  }
+ ],
+ "k": 50,
+ "max_recall_change": 0.1,
+ "model": "claude-opus-5-5",
+ "moved_threshold": 0.1,
+ "original_vs_rebatched": {
+  "all": {
+   "mean_abs": 0.074734,
+   "mean_signed": -0.06133,
+   "n": 188,
+   "share_moved": 0.228723,
+   "spearman": 0.879309
+  },
+  "benign": {
+   "mean_abs": 0.097674,
+   "mean_signed": -0.090233,
+   "n": 86,
+   "share_moved": 0.337209,
+   "spearman": 0.180249
+  },
+  "family": {
+   "mean_abs": 0.055392,
+   "mean_signed": -0.036961,
+   "n": 102,
+   "share_moved": 0.137255,
+   "spearman": 0.944736
+  }
+ },
+ "original_vs_rebatched_on_rerun_accounts": {
+  "all": {
+   "mean_abs": 0.078289,
+   "mean_signed": -0.066711,
+   "n": 76,
+   "share_moved": 0.236842,
+   "spearman": 0.853372
+  },
+  "benign": {
+   "mean_abs": 0.101081,
+   "mean_signed": -0.101081,
+   "n": 37,
+   "share_moved": 0.351351,
+   "spearman": 0.29949
+  },
+  "family": {
+   "mean_abs": 0.056667,
+   "mean_signed": -0.034103,
+   "n": 39,
+   "share_moved": 0.128205,
+   "spearman": 0.934578
+  }
+ },
+ "pool": 188,
+ "pool_family": 102,
+ "prompt_version": "v2",
+ "rebatched_vs_rerun": {
+  "all": {
+   "mean_abs": 0.014474,
+   "mean_signed": 0.002368,
+   "n": 76,
+   "share_moved": 0.013158,
+   "spearman": 0.967657
+  },
+  "benign": {
+   "mean_abs": 0.013784,
+   "mean_signed": 0.010541,
+   "n": 37,
+   "share_moved": 0.0,
+   "spearman": 0.848062
+  },
+  "family": {
+   "mean_abs": 0.015128,
+   "mean_signed": -0.005385,
+   "n": 39,
+   "share_moved": 0.025641,
+   "spearman": 0.984286
+  }
+ },
+ "rerun_batches": [
+  0,
+  1
+ ],
+ "run": "seed9001_s0.50_n5000",
+ "scores": {
+  "0150c99019c8": {
+   "original": 0.15,
+   "rebatched": 0.2
+  },
+  "01f0a53bdfbb": {
+   "original": 0.2,
+   "rebatched": 0.08
+  },
+  "0609c079ebb8": {
+   "original": 0.08,
+   "rebatched": 0.05,
+   "rerun": 0.08
+  },
+  "075e7f5b255c": {
+   "original": 0.95,
+   "rebatched": 0.9
+  },
+  "07a86e9f04a3": {
+   "original": 0.25,
+   "rebatched": 0.2
+  },
+  "08a63896ec51": {
+   "original": 0.85,
+   "rebatched": 0.85
+  },
+  "09fd36e69d04": {
+   "original": 0.15,
+   "rebatched": 0.05
+  },
+  "0af3e432f780": {
+   "original": 0.9,
+   "rebatched": 0.85
+  },
+  "0f00bf07c722": {
+   "original": 0.3,
+   "rebatched": 0.15,
+   "rerun": 0.15
+  },
+  "0f1d3414c11e": {
+   "original": 0.92,
+   "rebatched": 0.95,
+   "rerun": 0.95
+  },
+  "0f841c60c487": {
+   "original": 0.2,
+   "rebatched": 0.1
+  },
+  "0fcb16d22605": {
+   "original": 0.3,
+   "rebatched": 0.2
+  },
+  "10b08b2945b6": {
+   "original": 0.2,
+   "rebatched": 0.3
+  },
+  "12b2fa48f586": {
+   "original": 0.35,
+   "rebatched": 0.08
+  },
+  "170496e389cc": {
+   "original": 0.15,
+   "rebatched": 0.1,
+   "rerun": 0.1
+  },
+  "18404e810247": {
+   "original": 0.15,
+   "rebatched": 0.1
+  },
+  "1c002560095e": {
+   "original": 0.05,
+   "rebatched": 0.05
+  },
+  "1e6f9d46ab3a": {
+   "original": 0.3,
+   "rebatched": 0.1,
+   "rerun": 0.15
+  },
+  "201cf1e55d80": {
+   "original": 0.2,
+   "rebatched": 0.05
+  },
+  "20910ecc702f": {
+   "original": 0.97,
+   "rebatched": 0.95
+  },
+  "20987c696d65": {
+   "original": 0.18,
+   "rebatched": 0.08
+  },
+  "20cce33fe589": {
+   "original": 0.2,
+   "rebatched": 0.15
+  },
+  "22a76a0fcf1b": {
+   "original": 0.15,
+   "rebatched": 0.08,
+   "rerun": 0.08
+  },
+  "22d73558bd8f": {
+   "original": 0.15,
+   "rebatched": 0.08
+  },
+  "23067ec480ac": {
+   "original": 0.18,
+   "rebatched": 0.08,
+   "rerun": 0.1
+  },
+  "23b9599cf489": {
+   "original": 0.2,
+   "rebatched": 0.1,
+   "rerun": 0.1
+  },
+  "252b404d5e3d": {
+   "original": 0.2,
+   "rebatched": 0.1,
+   "rerun": 0.12
+  },
+  "25dddf985795": {
+   "original": 0.15,
+   "rebatched": 0.12
+  },
+  "25dfc53d3239": {
+   "original": 0.7,
+   "rebatched": 0.6
+  },
+  "276bcefb8e37": {
+   "original": 0.6,
+   "rebatched": 0.6
+  },
+  "2928e06e6c1e": {
+   "original": 0.35,
+   "rebatched": 0.15
+  },
+  "2c0370b5abc3": {
+   "original": 0.62,
+   "rebatched": 0.8
+  },
+  "2d88e5e1747b": {
+   "original": 0.15,
+   "rebatched": 0.08
+  },
+  "2edbfb3c2922": {
+   "original": 0.93,
+   "rebatched": 0.97
+  },
+  "2f27389f3435": {
+   "original": 0.6,
+   "rebatched": 0.6
+  },
+  "30638c458b20": {
+   "original": 0.95,
+   "rebatched": 0.9,
+   "rerun": 0.9
+  },
+  "335cf92bdf1a": {
+   "original": 0.95,
+   "rebatched": 0.95
+  },
+  "34aa0c6740a4": {
+   "original": 0.02,
+   "rebatched": 0.03,
+   "rerun": 0.03
+  },
+  "34ccd19d7c3e": {
+   "original": 0.3,
+   "rebatched": 0.08,
+   "rerun": 0.15
+  },
+  "388ad6db4727": {
+   "original": 0.95,
+   "rebatched": 0.95,
+   "rerun": 0.95
+  },
+  "38a63088dc66": {
+   "original": 0.15,
+   "rebatched": 0.25,
+   "rerun": 0.2
+  },
+  "38fd2667550c": {
+   "original": 0.15,
+   "rebatched": 0.1,
+   "rerun": 0.15
+  },
+  "3916ab0ef7c4": {
+   "original": 0.6,
+   "rebatched": 0.6
+  },
+  "3a4a6a6ef6a5": {
+   "original": 0.3,
+   "rebatched": 0.12
+  },
+  "3ab113ff325a": {
+   "original": 0.7,
+   "rebatched": 0.55
+  },
+  "3ab8c5b1f696": {
+   "original": 0.6,
+   "rebatched": 0.6
+  },
+  "3b0bb8deba42": {
+   "original": 0.97,
+   "rebatched": 0.95
+  },
+  "3bb29236771c": {
+   "original": 0.93,
+   "rebatched": 0.95
+  },
+  "3c33b1599b15": {
+   "original": 0.97,
+   "rebatched": 0.97
+  },
+  "3d1018e832d4": {
+   "original": 0.15,
+   "rebatched": 0.05,
+   "rerun": 0.05
+  },
+  "40424f20c6ac": {
+   "original": 0.9,
+   "rebatched": 0.85
+  },
+  "410ab8d55bf9": {
+   "original": 0.95,
+   "rebatched": 0.9
+  },
+  "4117c34924e6": {
+   "original": 0.05,
+   "rebatched": 0.06
+  },
+  "4306588bbd92": {
+   "original": 0.92,
+   "rebatched": 0.9,
+   "rerun": 0.9
+  },
+  "4520b0fee46d": {
+   "original": 0.2,
+   "rebatched": 0.08
+  },
+  "4610f5fec3c0": {
+   "original": 0.96,
+   "rebatched": 0.95,
+   "rerun": 0.95
+  },
+  "479d7265d806": {
+   "original": 0.95,
+   "rebatched": 0.95
+  },
+  "4a83a3664acd": {
+   "original": 0.93,
+   "rebatched": 0.9
+  },
+  "4ef4ee529810": {
+   "original": 0.2,
+   "rebatched": 0.1,
+   "rerun": 0.08
+  },
+  "5140fc21cf35": {
+   "original": 0.92,
+   "rebatched": 0.9,
+   "rerun": 0.9
+  },
+  "52f7e1ac9fcc": {
+   "original": 0.72,
+   "rebatched": 0.55,
+   "rerun": 0.55
+  },
+  "5359ad155ca5": {
+   "original": 0.2,
+   "rebatched": 0.1,
+   "rerun": 0.1
+  },
+  "56e944e12b6b": {
+   "original": 0.92,
+   "rebatched": 0.9
+  },
+  "582ff24f3fde": {
+   "original": 0.06,
+   "rebatched": 0.05,
+   "rerun": 0.05
+  },
+  "58aba9cdc084": {
+   "original": 0.05,
+   "rebatched": 0.05,
+   "rerun": 0.05
+  },
+  "5cb9cb6ce36f": {
+   "original": 0.2,
+   "rebatched": 0.12
+  },
+  "5e624bc7d631": {
+   "original": 0.2,
+   "rebatched": 0.05
+  },
+  "5ef3b7f778b2": {
+   "original": 0.3,
+   "rebatched": 0.25,
+   "rerun": 0.25
+  },
+  "6144bfbc9339": {
+   "original": 0.15,
+   "rebatched": 0.06,
+   "rerun": 0.08
+  },
+  "6171e9b0bd6c": {
+   "original": 0.96,
+   "rebatched": 0.93,
+   "rerun": 0.95
+  },
+  "6194892c2e46": {
+   "original": 0.8,
+   "rebatched": 0.8
+  },
+  "657cd24c5979": {
+   "original": 0.3,
+   "rebatched": 0.2
+  },
+  "65c3e7cec63d": {
+   "original": 0.3,
+   "rebatched": 0.15,
+   "rerun": 0.15
+  },
+  "65cf7e061a25": {
+   "original": 0.25,
+   "rebatched": 0.3
+  },
+  "66263c4adfe6": {
+   "original": 0.15,
+   "rebatched": 0.1
+  },
+  "67a4db28bdc8": {
+   "original": 0.9,
+   "rebatched": 0.85
+  },
+  "6a6a454c18e8": {
+   "original": 0.85,
+   "rebatched": 0.75,
+   "rerun": 0.75
+  },
+  "6aac1080ca87": {
+   "original": 0.7,
+   "rebatched": 0.75,
+   "rerun": 0.7
+  },
+  "6b3dd829219f": {
+   "original": 0.2,
+   "rebatched": 0.08,
+   "rerun": 0.1
+  },
+  "6f66e73d52b1": {
+   "original": 0.2,
+   "rebatched": 0.06,
+   "rerun": 0.08
+  },
+  "71ae3b820eaa": {
+   "original": 0.95,
+   "rebatched": 0.92
+  },
+  "71c276119e40": {
+   "original": 0.95,
+   "rebatched": 0.95,
+   "rerun": 0.95
+  },
+  "7277ad150dc0": {
+   "original": 0.2,
+   "rebatched": 0.12,
+   "rerun": 0.15
+  },
+  "729558875f13": {
+   "original": 0.15,
+   "rebatched": 0.1
+  },
+  "72cc4f6f3355": {
+   "original": 0.15,
+   "rebatched": 0.2
+  },
+  "7391cad159d6": {
+   "original": 0.25,
+   "rebatched": 0.2,
+   "rerun": 0.25
+  },
+  "741a54b3ff4c": {
+   "original": 0.93,
+   "rebatched": 0.9
+  },
+  "76f590d7ebb6": {
+   "original": 0.3,
+   "rebatched": 0.3,
+   "rerun": 0.25
+  },
+  "78237c148a0e": {
+   "original": 0.3,
+   "rebatched": 0.55,
+   "rerun": 0.4
+  },
+  "7aed5773e68d": {
+   "original": 0.2,
+   "rebatched": 0.15
+  },
+  "7b926c0b194f": {
+   "original": 0.2,
+   "rebatched": 0.08,
+   "rerun": 0.08
+  },
+  "7bfec744e54f": {
+   "original": 0.18,
+   "rebatched": 0.1,
+   "rerun": 0.1
+  },
+  "7c886da418db": {
+   "original": 0.7,
+   "rebatched": 0.6,
+   "rerun": 0.6
+  },
+  "822ded74767a": {
+   "original": 0.15,
+   "rebatched": 0.05
+  },
+  "82c2cc8c13aa": {
+   "original": 0.95,
+   "rebatched": 0.95
+  },
+  "835fd37ba1ad": {
+   "original": 0.15,
+   "rebatched": 0.15,
+   "rerun": 0.15
+  },
+  "86b48fc4eade": {
+   "original": 0.12,
+   "rebatched": 0.08,
+   "rerun": 0.05
+  },
+  "870536d3bfb8": {
+   "original": 0.18,
+   "rebatched": 0.2
+  },
+  "882116000a3e": {
+   "original": 0.15,
+   "rebatched": 0.08,
+   "rerun": 0.1
+  },
+  "8ad734723320": {
+   "original": 0.3,
+   "rebatched": 0.15
+  },
+  "8af3170950e5": {
+   "original": 0.25,
+   "rebatched": 0.12
+  },
+  "8b339bdde79c": {
+   "original": 0.15,
+   "rebatched": 0.1,
+   "rerun": 0.1
+  },
+  "8c7d6c9b7a7e": {
+   "original": 0.93,
+   "rebatched": 0.9
+  },
+  "90ba908ffa2d": {
+   "original": 0.15,
+   "rebatched": 0.08
+  },
+  "90c8a2f6990c": {
+   "original": 0.15,
+   "rebatched": 0.1
+  },
+  "9146795805d0": {
+   "original": 0.2,
+   "rebatched": 0.1,
+   "rerun": 0.1
+  },
+  "92145a25d2c6": {
+   "original": 0.28,
+   "rebatched": 0.1
+  },
+  "943e1b82be5b": {
+   "original": 0.97,
+   "rebatched": 0.9,
+   "rerun": 0.9
+  },
+  "950b6755ff48": {
+   "original": 0.25,
+   "rebatched": 0.08,
+   "rerun": 0.08
+  },
+  "95dcd4656887": {
+   "original": 0.2,
+   "rebatched": 0.15
+  },
+  "96af2a6037f2": {
+   "original": 0.03,
+   "rebatched": 0.03,
+   "rerun": 0.03
+  },
+  "9b7a899521ce": {
+   "original": 0.3,
+   "rebatched": 0.15
+  },
+  "9c568b8a2f7f": {
+   "original": 0.15,
+   "rebatched": 0.1
+  },
+  "9e1b00713fba": {
+   "original": 0.3,
+   "rebatched": 0.1
+  },
+  "9eca73023701": {
+   "original": 0.95,
+   "rebatched": 0.92,
+   "rerun": 0.9
+  },
+  "a0e5284c2170": {
+   "original": 0.5,
+   "rebatched": 0.15,
+   "rerun": 0.1
+  },
+  "a538e50394d9": {
+   "original": 0.08,
+   "rebatched": 0.03,
+   "rerun": 0.05
+  },
+  "a68998878c0a": {
+   "original": 0.95,
+   "rebatched": 0.97
+  },
+  "a6e82880b190": {
+   "original": 0.2,
+   "rebatched": 0.05,
+   "rerun": 0.05
+  },
+  "a72a8eef10ac": {
+   "original": 0.15,
+   "rebatched": 0.15
+  },
+  "a822db385a7e": {
+   "original": 0.65,
+   "rebatched": 0.7
+  },
+  "a94cc37c504b": {
+   "original": 0.1,
+   "rebatched": 0.15
+  },
+  "aa3b52f2a859": {
+   "original": 0.95,
+   "rebatched": 0.93,
+   "rerun": 0.95
+  },
+  "acf182a8042d": {
+   "original": 0.7,
+   "rebatched": 0.75
+  },
+  "adb53e9123d3": {
+   "original": 0.85,
+   "rebatched": 0.8
+  },
+  "adf1fb49028c": {
+   "original": 0.96,
+   "rebatched": 0.95
+  },
+  "ae17878c0a5a": {
+   "original": 0.15,
+   "rebatched": 0.08
+  },
+  "ae9b9d4f3396": {
+   "original": 0.25,
+   "rebatched": 0.08
+  },
+  "af19e6d4bd26": {
+   "original": 0.85,
+   "rebatched": 0.8
+  },
+  "b2aa982c8201": {
+   "original": 0.95,
+   "rebatched": 0.95,
+   "rerun": 0.95
+  },
+  "b30140b41357": {
+   "original": 0.2,
+   "rebatched": 0.05,
+   "rerun": 0.05
+  },
+  "b506f8c097cd": {
+   "original": 0.15,
+   "rebatched": 0.1
+  },
+  "b8e4ba7a73b0": {
+   "original": 0.2,
+   "rebatched": 0.2
+  },
+  "ba42fdda84d3": {
+   "original": 0.25,
+   "rebatched": 0.1
+  },
+  "bbca137424aa": {
+   "original": 0.2,
+   "rebatched": 0.1,
+   "rerun": 0.1
+  },
+  "bbfbbd2aa4d1": {
+   "original": 0.95,
+   "rebatched": 0.95
+  },
+  "bc8b95ecc262": {
+   "original": 0.25,
+   "rebatched": 0.2
+  },
+  "bdc033c3e6d9": {
+   "original": 0.15,
+   "rebatched": 0.12
+  },
+  "c2255bbfd8b5": {
+   "original": 0.95,
+   "rebatched": 0.97
+  },
+  "c29a5a6093b3": {
+   "original": 0.6,
+   "rebatched": 0.55,
+   "rerun": 0.55
+  },
+  "c4287fac9053": {
+   "original": 0.15,
+   "rebatched": 0.08
+  },
+  "c59aa5b43325": {
+   "original": 0.95,
+   "rebatched": 0.92
+  },
+  "c671c30b9120": {
+   "original": 0.95,
+   "rebatched": 0.95,
+   "rerun": 0.95
+  },
+  "c80f66899ee3": {
+   "original": 0.12,
+   "rebatched": 0.12,
+   "rerun": 0.15
+  },
+  "c94c09c22290": {
+   "original": 0.15,
+   "rebatched": 0.1,
+   "rerun": 0.1
+  },
+  "ca3e0d870af4": {
+   "original": 0.95,
+   "rebatched": 0.95
+  },
+  "ca8ab62e4760": {
+   "original": 0.85,
+   "rebatched": 0.85
+  },
+  "cc309afba5e7": {
+   "original": 0.3,
+   "rebatched": 0.25,
+   "rerun": 0.25
+  },
+  "ccb27f16ae30": {
+   "original": 0.2,
+   "rebatched": 0.2
+  },
+  "ccb99d8b2ca5": {
+   "original": 0.93,
+   "rebatched": 0.92,
+   "rerun": 0.95
+  },
+  "ce10561e2ccc": {
+   "original": 0.95,
+   "rebatched": 0.95
+  },
+  "cfa8b516b2aa": {
+   "original": 0.95,
+   "rebatched": 0.93,
+   "rerun": 0.95
+  },
+  "d16cfc9a2f6c": {
+   "original": 0.2,
+   "rebatched": 0.05,
+   "rerun": 0.05
+  },
+  "d2b5fc501f81": {
+   "original": 0.2,
+   "rebatched": 0.1
+  },
+  "d2c8ba8e0d8a": {
+   "original": 0.03,
+   "rebatched": 0.03,
+   "rerun": 0.03
+  },
+  "d4bf46b8314f": {
+   "original": 0.55,
+   "rebatched": 0.25
+  },
+  "d5880adf5b60": {
+   "original": 0.38,
+   "rebatched": 0.3
+  },
+  "d65394c9d3bc": {
+   "original": 0.8,
+   "rebatched": 0.6
+  },
+  "d6c27826f4c5": {
+   "original": 0.2,
+   "rebatched": 0.08,
+   "rerun": 0.08
+  },
+  "d720f6343d43": {
+   "original": 0.3,
+   "rebatched": 0.1,
+   "rerun": 0.1
+  },
+  "d80bda77d4d1": {
+   "original": 0.15,
+   "rebatched": 0.1
+  },
+  "daf08d2332e6": {
+   "original": 0.85,
+   "rebatched": 0.85
+  },
+  "dba88beacbfb": {
+   "original": 0.18,
+   "rebatched": 0.05
+  },
+  "dd421c45ea37": {
+   "original": 0.82,
+   "rebatched": 0.6
+  },
+  "de663d18cbf3": {
+   "original": 0.15,
+   "rebatched": 0.06,
+   "rerun": 0.08
+  },
+  "de90b78fc9c7": {
+   "original": 0.85,
+   "rebatched": 0.6,
+   "rerun": 0.6
+  },
+  "dfb49e6641f3": {
+   "original": 0.93,
+   "rebatched": 0.93
+  },
+  "dfcf78267322": {
+   "original": 0.18,
+   "rebatched": 0.1,
+   "rerun": 0.08
+  },
+  "e24b7efb6791": {
+   "original": 0.88,
+   "rebatched": 0.6
+  },
+  "e4255470fbaf": {
+   "original": 0.3,
+   "rebatched": 0.12,
+   "rerun": 0.15
+  },
+  "e7c281f4851d": {
+   "original": 0.15,
+   "rebatched": 0.12,
+   "rerun": 0.15
+  },
+  "ecf1bb5d2043": {
+   "original": 0.97,
+   "rebatched": 0.95
+  },
+  "ecf23a753278": {
+   "original": 0.95,
+   "rebatched": 0.93,
+   "rerun": 0.95
+  },
+  "edcacb542e7d": {
+   "original": 0.15,
+   "rebatched": 0.12,
+   "rerun": 0.1
+  },
+  "ee59c41ea758": {
+   "original": 0.85,
+   "rebatched": 0.6
+  },
+  "ef23029946ac": {
+   "original": 0.9,
+   "rebatched": 0.9
+  },
+  "f00d9e29781a": {
+   "original": 0.28,
+   "rebatched": 0.1
+  },
+  "f054c0d8a272": {
+   "original": 0.6,
+   "rebatched": 0.55,
+   "rerun": 0.55
+  },
+  "f1b00c971ea7": {
+   "original": 0.3,
+   "rebatched": 0.08
+  },
+  "f274c6e2d734": {
+   "original": 0.7,
+   "rebatched": 0.6
+  },
+  "f2e95e8e2fa2": {
+   "original": 0.92,
+   "rebatched": 0.93
+  },
+  "f53b50dcbf9f": {
+   "original": 0.15,
+   "rebatched": 0.15
+  },
+  "f5990e7119e6": {
+   "original": 0.97,
+   "rebatched": 0.95
+  },
+  "f62042f825e8": {
+   "original": 0.1,
+   "rebatched": 0.05
+  },
+  "f628b05e6cbc": {
+   "original": 0.15,
+   "rebatched": 0.25
+  },
+  "f76bbc982594": {
+   "original": 0.97,
+   "rebatched": 0.95,
+   "rerun": 0.95
+  },
+  "fbb211b0ac77": {
+   "original": 0.85,
+   "rebatched": 0.85
+  },
+  "fd4a1750462a": {
+   "original": 0.55,
+   "rebatched": 0.25
+  }
+ },
+ "verdict": "supported"
+}
