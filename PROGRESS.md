@@ -1,5 +1,8 @@
 # PROGRESS
 
+The working log of this project: stories, decisions, open questions and check results, kept as
+the audit trail. For the results, read [README.md](README.md) and [docs/FINDINGS.md](docs/FINDINGS.md).
+
 ## Stories
 - [x] 1 Skeleton (pyproject, Makefile, CI, MIT) · [x] 2 Schema (dataclasses + JSON Schema)
 - [x] 3 Generator: benign + 6 families, knob s, truth/ kept separate
@@ -112,6 +115,17 @@
   from its own location (it had an absolute checkout path; rerun after the edit: exit 0, same summary line as the review records).
   Not done: local `main` was not synced (the git guard leaves pulls on `main` to the owner);
   repo visibility is unchanged (private).
+- [x] 25 Public tidy (owner said go, 2026-11-13; branch claude/story25-public-tidy).
+  Outcome: a visitor gets the main result, who did what and the limits from the first screen of
+  the README, and can check the LLM numbers from tracked files.
+  Acceptance (document checks, no new tests): (1) `evidence/seed9001_s0.50_n5000/` holds the two
+  score bundles, `second_stage.json` and `batch_check.json`, byte-identical to `results/`; (2) every
+  figure in the README's results table equals the value in the tracked `second_stage.json`;
+  (3) the long findings moved unchanged to `docs/FINDINGS.md` and every relative link in README,
+  FINDINGS and the evidence note resolves; (4) `gitleaks` over history and tree reports no leaks and
+  no tracked file has an absolute home path; (5) `make check` exit 0.
+  Not done: history not rewritten (it carries the pre-registration order and the cited commit
+  hashes); reviewer replies (about 20 MB of rationales) stay untracked; visibility is the owner's.
 - Headline (seed 9001, commit af90a8e): null 0/108; winner calls 8/12 (pre-reg CIs), 7/12 (widened);
   H4 MISS, H5 MISS; gb+sim2 vs gb on template: +0.016 at s=0.5, -0.002 at s=0.25 (expectation MISS).
 
@@ -163,21 +177,16 @@
   account per call, real token counts) would test H6 properly and give a cost; it needs an
   ANTHROPIC_API_KEY in the environment's settings. Until then there is no cost figure.
 
-## Resume here (2026-11-12)
-- **Branch:** `claude/story23-batch-independence` (head `75c7006` plus this note), which sits on
-  top of `claude/story24-prepublish` (`5f38de8`), so merging it brings stories 23 and 24 together.
-  Neither is merged or pushed. Merge and push are the owner's; so is `git pull` on local `main`, which was 2 commits behind
-  `origin/main` on 2026-11-12.
+## Resume here (2026-11-13)
+- **State:** stories 1 to 25 are done. Stories 23 and 24 are merged in `origin/main` (PR #7);
+  story 25 is on `claude/story25-public-tidy`.
+- **Paused:** the project is on hold from November 2026 and may resume later.
 - **Environment:** `.venv` in the main checkout (Python 3.12, `uv pip install -e ".[dev]"`); plain
-  `make check` works. The old story worktree and three merged local branches were
-  removed on 2026-11-12 at the owner's request, so the main checkout's gitignored `results/` is
-  now the only copy of the reviewer replies.
-- **Very next step (owner):** merge the story 23 branch, make the repo public, post the write-up.
-  The post draft (final wording agreed 2026-11-12, kept outside the repo) states: synthetic data,
-  one seed, Claude-written generator; batch-mates shifted scores but not the catches (story 23:
-  0.879 to 0.860 account takeover, 0.718 unchanged card testing); no cost figure (Q13).
-- **Not done, in case work resumes:** Q13, a second eval seed. Story 23 left two things untested:
-  accounts outside the pool of 188 were not rescored, and the check is one run on one seed.
+  `make check` works. The gitignored `results/` in the main checkout is the only copy of the
+  reviewer replies; the scores are tracked in `evidence/`.
+- **If work resumes:** Q13 (an API pass, one account per call, for a cost figure) and a second
+  eval seed. Story 23 left two things untested: accounts outside the pool of 188 were not
+  rescored, and the check is one run on one seed.
 
 ### Story 23 (run 2026-11-12, supported; result in the story list above; sketch kept for the record): does a reviewer's score depend on its batch?
 Why: story 21's second-stage numbers reuse one score per account from a full-test pass (round-1
@@ -229,7 +238,7 @@ What the LLM work showed (stories 20 and 21; synthetic data, one seed, Claude-wr
 - All hand-written rules switched on match the reviewer on card testing and scraping.
 - Still unknown: cost (no token counts in a subagent pass), a second seed, and real data.
 
-Running a subagent pass without burning the usage limit:
+Running a subagent pass within the usage limit:
 - A reviewer costs about 0.4M input-side tokens per batch of about 47 accounts on Opus, most of it
   the batch text billed on each of 3 turns plus about 31k of Claude Code overhead per turn.
 - The read guard rejects a whole-file read of a 200 to 270 KB batch. Tell each reviewer the line
@@ -239,21 +248,21 @@ Running a subagent pass without burning the usage limit:
   lost 15 reviewers' work. The weekly headroom cannot be read in advance.
 - Never mix models inside one pass, and never collect a pass with batches missing (they score 0.5).
 
-Open, in the order suggested (updated 2026-11-11):
-1. Story 23 is done on its branch (supported); owner to merge. The write-up can now say the
-   batch assumption was checked, with the score-shift caveat, instead of "untested".
-2. Decide whether the repo goes public for a write-up; it is private now. The round-1 review's
-   fixes are in (story 22). `report/index.html` was rebuilt at `db772cb` with `build_report`.
-3. Q13, the API pass: the only way to get a cost figure and test H6's cost part.
-4. Optional: the second stage on one more eval seed (v2 only is 41 reviewers, about 16M tokens).
-   Only worth it if story 23 supports the method.
-5. Owner decisions left: none on cleanup; the old story worktree is deleted. (`reviews/`, `.gitignore`, `.ignore` and
-   the date corrections were done in story 24.)
+Open (updated 2026-11-13):
+1. Making the repo public is the owner's step. Stories 22 to 25 prepared the tree for it.
+2. Q13, the API pass: the only way to get a cost figure and test H6's cost part.
+3. Optional: the second stage on one more eval seed (v2 only is 41 reviewers, about 16M tokens).
 
 ## Suggestions (not done)
 - Paired bootstrap for detector differences; an s-sweep curve; real-tokenizer token counts.
 
 ## Last check
+- 2026-11-13, branch `claude/story25-public-tidy` (on `origin/main` `0ae4472`), main checkout's
+  `.venv`: `make check` exit 0, `138 passed in 342.77s (0:05:42)`. `second_stage --seed 9001`
+  rerun from the tracked bundles: output byte-identical to `evidence/.../second_stage.json`.
+  `gitleaks dir` over the tree and `gitleaks git` over the history: no leaks found. `make demo`,
+  `make confirm` and `make confirm-large` not rerun.
+- Earlier:
 - 2026-11-12, branch `claude/story24-prepublish` (tree of `origin/main` `8086c52` plus story 24),
   main checkout's `.venv`: `make check` exit 0, lint and typecheck clean,
   `130 passed in 313.66s (0:05:13)`. `gitleaks git` (59 commits) and `gitleaks dir reviews`:
